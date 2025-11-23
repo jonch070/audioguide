@@ -520,9 +520,16 @@ class corpus:
 			if stop == None: stop=100
 			p.percentageBarNext(lowerLabel="%s@%.2f-%.2f"%(corpusSegParams[0], start, stop))
 			# make the obj
-			cpsSeg = sfsegment.corpusSegment(*corpusSegParams)
-			# add it to the list!
-			self.preLimitSegmentList.append(cpsSeg)
+			try:
+				cpsSeg = sfsegment.corpusSegment(*corpusSegParams)
+				# add it to the list!
+				self.preLimitSegmentList.append(cpsSeg)
+			except Exception as e:
+				# Skip files that fail analysis (corrupted or incompatible audio)
+				if "SKIP_FILE" in str(e):
+					continue  # Skip to next file
+				else:
+					raise  # Re-raise unexpected errors
 	
 		# test that segmented made it through
 		if len(self.preLimitSegmentList) == 0:
@@ -1092,7 +1099,7 @@ def sortOutputEventsIntoTracks(eventlist, track_method, vcToCorpusName, transpos
 		track_assign = [(k, v) for k, v in track_assign.items()]
 		track_assign.sort()
 		for tidx, t in track_assign:
-			events_as_dicts = [{'file': e.filename, 'name': e.printName, 'time': e.timeInScore, 'stop': e.timeInScore+e.duration, "skip": e.sfSkip, "duration": e.duration, "orig_duration": e.cpsduration*e.transposeSpeedChange, "transposeSpeedChange": e.transposeSpeedChange, "amp": e.powerSeg, "ampscale": util.dbToAmp(e.envDb), "fadein": e.envAttackSec, 'fadeout': e.envDecaySec, 'transposition': e.transposition} for e in t]
+			events_as_dicts = [{'file': e.filename, 'name': e.printName, 'time': e.timeInScore, 'stop': e.timeInScore+e.duration, "skip": e.sfSkip, "duration": e.duration, "orig_duration": e.duration, "transposeSpeedChange": e.transposeSpeedChange, "amp": e.powerSeg, "ampscale": util.dbToAmp(e.envDb), "fadein": e.envAttackSec, 'fadeout': e.envDecaySec, 'transposition': e.transposition, 'gain_envelope': e.gain_envelope if hasattr(e, 'gain_envelope') else None} for e in t]
 			#print(e.printName, e.transposeSpeedChange, e.cpsduration, e.transposeSpeedChange, e.cpsduration*e.transposeSpeedChange)
 			output.append([grand_old_dict[sortkey][0], events_as_dicts, 'cps'])
 	return output

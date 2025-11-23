@@ -163,11 +163,12 @@ class TerminalController:
 
     def _render_sub(self, match, enc="latin1"):
         s = match.group()
-        if s == '$$':
+        if s == b'$$':
             return s
         else:
         	   s = s.decode(enc)[2:-1] # remove braces
-        	   return getattr(self, s)
+        	   result = getattr(self, s)
+        	   return result.encode(enc) if isinstance(result, str) else result
 
 
 

@@ -170,6 +170,8 @@ UserVar_types = {
 'RPP_CPSTRACK_METHOD': ['cpsidx', 'minimum'],
 'RPP_TRANS_AFFECTS_SPEED': ['True or False'],
 'RPP_AUTOLAUNCH': ['True or False'],
+'ENABLE_TAKEENV': ['True or False'],
+'TAKEENV_STATIC_GAIN': ['a number'],
 
 
 #################  DESCRIPTOR COMPUTATION SETTINGS  ################
@@ -191,6 +193,25 @@ UserVar_types = {
 'DYNAMIC_TO_DECIBEL': ['None', 'a dictionary'],
 'FILENAMESTRING_TO_DYNAMICS': ['None', 'a dictionary'],
 
+
+###############  SPECTRAL RECONSTRUCTION  ##############
+'USE_SPECTRAL_RECONSTRUCTION': ['True or False'],
+'SPECTRAL_WHOLE_FILE': ['True or False'],
+'SPECTRAL_TOLERANCE_CENTS': ['a number greater than zero'],
+'SPECTRAL_MAX_PARTIALS': ['an integer greater than zero'],
+'SPECTRAL_MIN_AMPLITUDE_RATIO': ['a number greater than zero'],
+'ENABLE_SPECTRAL_VOLUMEENV': ['True or False'],
+'SPECTRAL_POLYPHONIC': ['True or False'],
+'SPECTRAL_POLYPHONIC_TOLERANCE_CENTS': ['a number greater than zero'],
+'SPECTRAL_POLYPHONIC_MIN_HARMONICS': ['an integer greater than zero'],
+'SPECTRAL_POLYPHONIC_MAX_VOICES': ['an integer greater than zero'],
+'SPECTRAL_TRIM_TO_TARGET': ['True or False'],
+'SPECTRAL_DURATION_TOLERANCE': ['a number greater than zero'],
+'SPECTRAL_NO_REPEAT': ['True or False'],
+'SPECTRAL_TIME_SPARSITY': ['a number greater than zero'],
+'SPECTRAL_KEY_AWARE': ['True or False'],
+'SPECTRAL_KEY_ROOT': ['a string'],
+'SPECTRAL_SCALE_TYPE': ['a string'],
 
 ################  USER INTERACTION / PRINTING  ##############
 'SEARCH_PATHS': ['a list of strings'],
@@ -278,6 +299,8 @@ OptionChangeToProgramRun = {
 "RPP_CPSTRACK_METHOD": "output",
 "RPP_TRANS_AFFECTS_SPEED": "output",
 "RPP_AUTOLAUNCH": "output",
+"ENABLE_TAKEENV": "output",
+"TAKEENV_STATIC_GAIN": "output",
 
 "DESCRIPTOR_DATABASE_SIZE_LIMIT": "concate",
 "DESCRIPTOR_DATABASE_AGE_LIMIT": "concate",
@@ -298,6 +321,24 @@ OptionChangeToProgramRun = {
 
 "DYNAMIC_TO_DECIBEL": "corpus",
 "FILENAMESTRING_TO_DYNAMICS": "corpus",
+
+"USE_SPECTRAL_RECONSTRUCTION": "concate",
+"SPECTRAL_WHOLE_FILE": "concate",
+"SPECTRAL_TOLERANCE_CENTS": "concate",
+"SPECTRAL_MAX_PARTIALS": "concate",
+"SPECTRAL_MIN_AMPLITUDE_RATIO": "concate",
+"ENABLE_SPECTRAL_VOLUMEENV": "concate",
+"SPECTRAL_POLYPHONIC": "concate",
+"SPECTRAL_POLYPHONIC_TOLERANCE_CENTS": "concate",
+"SPECTRAL_POLYPHONIC_MIN_HARMONICS": "concate",
+"SPECTRAL_POLYPHONIC_MAX_VOICES": "concate",
+"SPECTRAL_TRIM_TO_TARGET": "concate",
+"SPECTRAL_DURATION_TOLERANCE": "concate",
+"SPECTRAL_NO_REPEAT": "concate",
+"SPECTRAL_TIME_SPARSITY": "concate",
+"SPECTRAL_KEY_AWARE": "concate",
+"SPECTRAL_KEY_ROOT": "concate",
+"SPECTRAL_SCALE_TYPE": "concate",
 
 "SEARCH_PATHS": "reinit",
 "VERBOSITY": "reinit",

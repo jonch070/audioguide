@@ -357,7 +357,13 @@ EnergyEnvelope  = 1
 			fh.write(self.config_text)
 			fh.close()
 			# create files
-			self.rawData[sffile]['info'], self.rawData[sffile]['ircamd'] = self.__createDescriptorsFile__(sffile, self.analdir, descriptorfile, infofile, self.ircamdescriptor_bin, self.config_loc)
+			try:
+				self.rawData[sffile]['info'], self.rawData[sffile]['ircamd'] = self.__createDescriptorsFile__(sffile, self.analdir, descriptorfile, infofile, self.ircamdescriptor_bin, self.config_loc)
+			except (ValueError, Exception) as e:
+				# Skip files with corrupted or incompatible audio data
+				print("WARNING: Skipping file due to analysis error: %s" % os.path.basename(sffile))
+				print("  Error: %s" % str(e))
+				raise Exception("SKIP_FILE: %s" % sffile)
 			if not os.path.exists(descriptorfile):
 				print(util.ladytext("Oh noos! The ircamdescriptor binary has fialed to create the requested output files.  See the binary's output below for details."))
 		else:

@@ -70,7 +70,11 @@ class main:
 			self.normalize()
 		if concate:
 			if print_steps: print("5. concatenating")
-			self.standard_concatenate()
+			# Choose between standard and spectral reconstruction modes
+			if self.ops.USE_SPECTRAL_RECONSTRUCTION:
+				self.spectral_concatenate()
+			else:
+				self.standard_concatenate()
 		if output:
 			if print_steps: print("6. writing outputs")
 			files = self.write_concatenate_output_files()
@@ -335,6 +339,276 @@ spass('closest', d('X', norm=1), d('Y', norm=1))
 
 
 
+	def spectral_concatenate(self):
+		"""
+		Spectral reconstruction concatenation mode.
+
+		Instead of standard descriptor matching, this mode:
+		1. Extracts harmonic series from each target segment
+		2. Matches corpus sounds to individual harmonics by frequency
+		3. Layers corpus sounds with appropriate gain to recreate target spectrum
+		"""
+		import audioguide.spectrallayering as spectrallayering
+
+		##############################
+		## Initialize ##
+		##############################
+		self.p.logsection( "SPECTRAL RECONSTRUCTION" )
+		self.tgt.setupConcate(self.ops._mixtureDescriptors)
+		self.AnalInterface.done(dataGbLimit=self.ops.DESCRIPTOR_DATABASE_SIZE_LIMIT, dataDayLimit=self.ops.DESCRIPTOR_DATABASE_AGE_LIMIT)
+
+		self.cps.setupConcate(self.tgt, self.AnalInterface)
+
+		# Initialize instruments for output file generation
+		self.instruments = musicalwriting.instruments(self.ops.INSTRUMENTS, self.ops.CORPUS, self.tgt.segs, self.tgt.lengthInFrames, self.cps.postLimitSegmentNormList, self.AnalInterface.hopLengthSec, self.p)
+		self.outputEvents = []
+
+		# Get all corpus segments
+		# postLimitSegmentNormList is a list of corpusSegment objects
+		all_corpus_segments = self.cps.postLimitSegmentNormList
+
+		##############################
+		## Determine target segments to process ##
+		##############################
+		# If SPECTRAL_WHOLE_FILE is enabled, process entire target as single segment
+		if self.ops.SPECTRAL_WHOLE_FILE:
+			# Use the 'whole' sfsegment which covers the entire target file
+			target_segments = [self.tgt.whole]
+			self.p.log("Spectral whole-file mode: analyzing entire target as single spectral snapshot\n")
+		else:
+			# Use normal segmentation
+			target_segments = self.tgt.segs
+
+		self.p.log("Spectral reconstruction mode: matching %d target segments to %d corpus segments\n" %
+			      (len(target_segments), len(all_corpus_segments)))
+
+		# Track corpus file usage for no-repeat and time sparsity features
+		# Key: corpus segment filename, Value: last usage time (in target timeline seconds)
+		corpus_usage_tracker = {}
+
+		# Key-aware filtering settings (extracted once before loop)
+		key_aware = getattr(self.ops, 'SPECTRAL_KEY_AWARE', False)
+		key_root = getattr(self.ops, 'SPECTRAL_KEY_ROOT', 'C')
+		scale_type = getattr(self.ops, 'SPECTRAL_SCALE_TYPE', 'major')
+
+		# Auto-detect key if requested
+		if key_aware and key_root.lower() == 'auto':
+			self.p.log("Auto-detecting musical key from target audio...\n")
+			# Collect all frequencies from all target segments for key detection
+			all_freqs = []
+			all_amps = []
+			for seg in target_segments:
+				# Load and extract segment audio
+				import soundfile as sf
+				audio_data, sr = sf.read(seg.filename)
+				if len(audio_data.shape) > 1:
+					audio_data = audio_data.mean(axis=1)
+				start_sample = int(seg.segmentStartSec * sr)
+				end_sample = int((seg.segmentStartSec + seg.segmentDurationSec) * sr)
+				target_audio = audio_data[start_sample:end_sample]
+
+				# Analyze spectral content
+				if getattr(self.ops, 'SPECTRAL_POLYPHONIC', False):
+					# Polyphonic mode: extract all peaks and group into voices
+					all_peaks = spectralanalysis.extract_all_spectral_peaks(
+						target_audio, sr, fmin=80, fmax=2000,
+						min_amplitude_ratio=self.ops.SPECTRAL_MIN_AMPLITUDE_RATIO,
+						max_peaks=32
+					)
+					if len(all_peaks) > 0:
+						voices = spectralanalysis.group_peaks_into_harmonic_series(
+							all_peaks,
+							tolerance_cents=getattr(self.ops, 'SPECTRAL_POLYPHONIC_TOLERANCE_CENTS', 50),
+							min_harmonics=getattr(self.ops, 'SPECTRAL_POLYPHONIC_MIN_HARMONICS', 3),
+							max_voices=getattr(self.ops, 'SPECTRAL_POLYPHONIC_MAX_VOICES', 4)
+						)
+						# Collect f0 from each voice
+						for voice in voices:
+							all_freqs.append(voice['f0'])
+							all_amps.append(voice['strength'])
+				else:
+					# Monophonic mode: analyze single spectrum
+					spectrum = spectralanalysis.analyze_segment_spectrum(
+						target_audio, sr, fmin=80, fmax=2000, n_harmonics=16
+					)
+					if spectrum['f0'] > 0:
+						all_freqs.append(spectrum['f0'])
+						# Use max harmonic amplitude as weight
+						all_amps.append(max(h[1] for h in spectrum['harmonics']) if spectrum['harmonics'] else 1.0)
+
+			# Detect key
+			detected_root, detected_scale = spectrallayering.detect_key_from_frequencies(all_freqs, all_amps)
+			key_root = detected_root
+			scale_type = detected_scale
+			self.p.log("  Detected key: %s %s\n" % (key_root, scale_type))
+
+		##############################
+		## Process each target segment ##
+		##############################
+		for target_idx, target_seg in enumerate(target_segments):
+			# Run spectral matching
+			# Duration tolerance: only use when NOT trimming (prevents mismatched durations)
+			duration_tolerance = None
+			if not getattr(self.ops, 'SPECTRAL_TRIM_TO_TARGET', False):
+				duration_tolerance = getattr(self.ops, 'SPECTRAL_DURATION_TOLERANCE', None)
+
+			# No-repeat and time sparsity settings
+			no_repeat = getattr(self.ops, 'SPECTRAL_NO_REPEAT', False)
+			time_sparsity = getattr(self.ops, 'SPECTRAL_TIME_SPARSITY', None)
+
+			spectral_matches = spectrallayering.spectral_layering_match(
+				target_seg,
+				all_corpus_segments,
+				self.AnalInterface,
+				tolerance_cents=self.ops.SPECTRAL_TOLERANCE_CENTS,
+				max_partials=self.ops.SPECTRAL_MAX_PARTIALS,
+				min_amplitude_ratio=self.ops.SPECTRAL_MIN_AMPLITUDE_RATIO,
+				enable_polyphonic=getattr(self.ops, 'SPECTRAL_POLYPHONIC', False),
+				polyphonic_tolerance_cents=getattr(self.ops, 'SPECTRAL_POLYPHONIC_TOLERANCE_CENTS', 50),
+				polyphonic_min_harmonics=getattr(self.ops, 'SPECTRAL_POLYPHONIC_MIN_HARMONICS', 3),
+				polyphonic_max_voices=getattr(self.ops, 'SPECTRAL_POLYPHONIC_MAX_VOICES', 4),
+				duration_tolerance_sec=duration_tolerance,
+				corpus_usage_tracker=corpus_usage_tracker,
+				no_repeat=no_repeat,
+				time_sparsity_sec=time_sparsity,
+				current_time_sec=target_seg.segmentStartSec,
+				key_aware=key_aware,
+				key_root=key_root,
+				scale_type=scale_type
+			)
+
+
+			# NORMALIZE GAINS for this target segment to prevent clipping
+			# spectral_matches is already for just this target segment
+			if len(spectral_matches) > 0:
+				max_gain_db = max(m['gain_db'] for m in spectral_matches)
+				if max_gain_db > 0:
+					# Scale all gains down so max becomes 0dB
+					gain_reduction = -max_gain_db
+					for match in spectral_matches:
+						match['gain_db'] += gain_reduction
+						# Also update gain_envelope if present
+						if 'gain_envelope' in match and match['gain_envelope'] is not None:
+							match['gain_envelope'] = [(t, amp_db + gain_reduction)
+													for t, amp_db in match['gain_envelope']]
+
+			# Convert to AudioGuide output events - create event structure with all required attributes
+			for match in spectral_matches:
+				corpus_seg = match['corpus_segment']
+
+				# Create event object
+				class SpectralEvent:
+					def makeDictOutput(self):
+						dicty = {}
+						for key in ['timeInScore', 'sfchnls', 'duration', 'envAttackSec', 'envDecaySec', 'envSlope', 'filename', 'peaktimeSec', 'sfSkip', 'transposition', 'tgtsegnumb', 'envDb']:
+							dicty[key] = getattr(self, key)
+						dicty['corpusIdNumber'] = self.voiceID
+						dicty['classificationNumber'] = self.classification
+						dicty['simultaneousSelectionNumber'] = self.simSelects
+						dicty['peakRms'] = self.powerSeg
+						dicty['peakRmsDb'] = self.rmsSeg
+						dicty['midiPitch'] = self.midi
+						dicty['envScaleDb'] = self.envDb
+						return dicty
+					def makeMaxMspListOutput(self):
+						# time values in milliseconds!
+						return [round(self.timeInScore*1000., 1), round(self.duration*1000., 1), self.filename, round(self.sfSkip*1000., 1), self.envDb, self.transposition, round(self.envAttackSec*1000., 1), round(self.envDecaySec*1000., 1)]
+
+					def makeLabelText(self):
+						if self.metadata != '':
+							text=self.metadata
+						elif self.sfSkip == 0:
+							text = "%s"%(self.printName)
+						else:
+							text = "%s@%.2f"%(self.printName, self.sfSkip)
+						return "%f\t%f\t%s\n"%(self.timeInScore, self.timeInScore+self.duration, text)
+
+					def makeLispText(self):
+						return '(%.3f %.3f %.3f "%s" %.2f) '%(self.timeInScore, self.duration, self.midi, self.filename, self.rmsSeg)
+
+					def makeCsoundOutputText(self, channelMethod, instru=1):
+						if channelMethod == 'mix': channelMethod = 'stereo'
+						return "i%i  %.3f  %.3f  %.3f  \"%s\"  %.3f  %.3f  %.3f  %.3f  %.3f  %.3f  %.3f  %.3f  %.3f  %i  %i  %f  %i  %i  \"%s\"  \"%s\"\n"%(instru, self.timeInScore, self.duration, self.envDb, self.filename, self.sfSkip, self.transposition, self.rmsSeg, self.peaktimeSec, self.effDurSec, self.envAttackSec, self.envDecaySec, self.envSlope, self.voiceID, self.selectedInstrumentIdx, self.simSelects, self.tgtsegdur, self.tgtsegnumb, self.classification, self.stretchcode, channelMethod)
+
+
+					
+					pass
+
+				output_event = SpectralEvent()
+
+				# Corpus segment attributes
+				output_event.sfseghandle = corpus_seg
+				output_event.filename = corpus_seg.filename
+				output_event.printName = corpus_seg.printName if hasattr(corpus_seg, 'printName') else corpus_seg.filename
+				output_event.sfSkip = corpus_seg.segmentStartSec
+				output_event.cpsduration = corpus_seg.segmentDurationSec
+				output_event.voiceID = corpus_seg.voiceID if hasattr(corpus_seg, 'voiceID') else 0
+				output_event.sfchnls = corpus_seg.soundfileChns if hasattr(corpus_seg, 'soundfileChns') else 1
+
+				# Audio properties
+				output_event.powerSeg = corpus_seg.desc.get('power-seg') if hasattr(corpus_seg, 'desc') else 1.0
+				output_event.rmsSeg = 20.0 * np.log10(output_event.powerSeg) if output_event.powerSeg > 0 else -120.0
+				output_event.effDurSec = corpus_seg.desc.get('effDur-seg') if hasattr(corpus_seg, 'desc') else corpus_seg.segmentDurationSec
+				output_event.peaktimeSec = corpus_seg.desc.get('peakTime-seg') * self.AnalInterface.f2s(1) if hasattr(corpus_seg, 'desc') else 0.0
+
+				# MIDI pitch (from spectral matching, NO transposition)
+				target_freq = match['target_partial_freq']
+				output_event.midi = 69 + 12 * np.log2(target_freq / 440.0) if target_freq > 0 else 60
+				output_event.midiVelocity = min(127, max(10, int(output_event.rmsSeg + 127)))
+
+				# Timing and duration
+				output_event.timeInScore = target_seg.segmentStartSec
+
+				# Duration: match target segment if SPECTRAL_TRIM_TO_TARGET enabled, else use corpus duration
+				if getattr(self.ops, 'SPECTRAL_TRIM_TO_TARGET', False):
+					output_event.duration = target_seg.segmentDurationSec
+				else:
+					output_event.duration = corpus_seg.segmentDurationSec
+
+				output_event.tgtsegdur = target_seg.segmentDurationSec
+				output_event.tgtsegnumb = target_idx
+
+				# Transposition (NONE for spectral reconstruction)
+				output_event.transposition = 0.0
+				output_event.transratio = 1.0
+				output_event.transposeSpeedChange = 1.0
+
+				# Amplitude and envelope
+				output_event.envDb = match['gain_db']
+
+				# Add quick fade-out if trimming to prevent clicks
+				if getattr(self.ops, 'SPECTRAL_TRIM_TO_TARGET', False):
+					# Short fade-out at end (10ms) to prevent click when trimming long corpus sounds
+					fade_out_time = min(0.01, target_seg.segmentDurationSec * 0.1)  # 10ms or 10% of duration
+					output_event.envDecaySec = fade_out_time
+				else:
+					output_event.envDecaySec = 0.005  # Default short release
+				output_event.ampRatio = 10 ** (match['gain_db'] / 20.0)
+				output_event.envAttackSec = 0.01
+				output_event.envSlope = 1.0
+
+				# Additional required attributes
+				output_event.simSelects = 0
+				output_event.selectedInstrumentIdx = 0
+				output_event.classification = 0
+				output_event.stretchcode = ''
+				output_event.dynamicFromFilename = ''
+				output_event.metadata = ''
+				output_event.instrTag = None
+				output_event.instrParams = None
+				output_event.extraDataFromSegmentationFile = ''
+				output_event.selection_cnt = 0
+
+				# Store gain envelope for RPP output
+				output_event.gain_envelope = match['gain_envelope']
+
+				self.outputEvents.append(output_event)
+
+			# Progress logging
+			if (target_idx + 1) % 10 == 0:
+				self.p.log("  Processed %d/%d target segments\n" % (target_idx + 1, len(self.tgt.segs)))
+
+		self.p.log("Generated %d output events from spectral matching\n" % len(self.outputEvents))
 
 
 	def write_concatenate_output_files(self):
@@ -412,13 +686,23 @@ spass('closest', d('X', norm=1), d('Y', norm=1))
 		################
 		if self.ops.RPP_FILEPATH != None:
 			import audioguide.fileoutput.reaper as rpp
+			import audioguide.takeenv_processor as takeenv_processor
 			this_rpp = rpp.output(self.ops.get_outputfile('RPP_FILEPATH'))
 			# add target?
 			if self.ops.RPP_INCLUDE_TARGET:
 				this_rpp.add_tracks(concatenativeclasses.sortTargetSegmentsIntoTracks(self.tgt.segs, "minimum"))
 			# add selected corpus sounds
-			this_rpp.add_tracks(concatenativeclasses.sortOutputEventsIntoTracks(self.outputEvents, self.ops.RPP_CPSTRACK_METHOD, self.cps.data['vcToCorpusName'], transpositionAffectsPlayspeed=self.ops.RPP_TRANS_AFFECTS_SPEED))
-			this_rpp.write(self.ops.RPP_AUTOLAUNCH, playrate_change_duration=self.ops.RPP_TRANS_AFFECTS_SPEED)
+			corpus_tracks = concatenativeclasses.sortOutputEventsIntoTracks(self.outputEvents, self.ops.RPP_CPSTRACK_METHOD, self.cps.data['vcToCorpusName'], transpositionAffectsPlayspeed=self.ops.RPP_TRANS_AFFECTS_SPEED)
+			# Process for TAKEENV if enabled
+			if self.ops.ENABLE_TAKEENV:
+				corpus_tracks = takeenv_processor.process_tracks_for_takeenv(
+					corpus_tracks,
+					enable_takeenv=True,
+					static_gain_db=self.ops.TAKEENV_STATIC_GAIN,
+					dynamic=False
+				)
+			this_rpp.add_tracks(corpus_tracks)
+			this_rpp.write(self.ops.RPP_AUTOLAUNCH, playrate_change_duration=self.ops.RPP_TRANS_AFFECTS_SPEED, enable_volumeenv=self.ops.ENABLE_SPECTRAL_VOLUMEENV)
 			dict_of_files_written['RPP_FILEPATH'] = self.ops.get_outputfile('RPP_FILEPATH')
 			self.p.log( "Wrote rpp file %s\n"%self.ops.get_outputfile('RPP_FILEPATH') )
 

@@ -81,6 +81,9 @@ RPP_INCLUDE_TARGET = False
 RPP_CPSTRACK_METHOD = 'cpsidx'
 RPP_TRANS_AFFECTS_SPEED = True
 RPP_AUTOLAUNCH = False
+# TAKEENV clip gain automation
+ENABLE_TAKEENV = False  # Enable clip gain automation (TAKEENV)
+TAKEENV_STATIC_GAIN = 0.0  # Static gain offset in dB (per layer)
 
 ################  DESCRIPTOR COMPUTATION SETTINGS  ################
 DESCRIPTOR_DATABASE_SIZE_LIMIT = 1
@@ -101,6 +104,19 @@ IRCAMDESCRIPTOR_NUMB_MFCCS = 13
 # filenames -> dynamic -> dB settings
 DYNAMIC_TO_DECIBEL = {'ppp': -45, 'pp': -40, 'p': -35, 'mp': -30, 'mf': -22, 'f': -15, 'ff': -6, 'fff': -3}
 FILENAMESTRING_TO_DYNAMICS = {}
+
+###############  SPECTRAL RECONSTRUCTION  ##############
+USE_SPECTRAL_RECONSTRUCTION = False  # Use spectral harmonic matching instead of standard search
+SPECTRAL_WHOLE_FILE = False  # Analyze entire target as single spectral snapshot (ignore segmentation)
+SPECTRAL_TOLERANCE_CENTS = 50  # Frequency matching tolerance in cents
+SPECTRAL_MAX_PARTIALS = 8  # Maximum harmonics to match per target segment
+SPECTRAL_MIN_AMPLITUDE_RATIO = 0.01  # Minimum partial amplitude (relative to max)
+ENABLE_SPECTRAL_VOLUMEENV = False  # Write time-varying volume automation for spectral partials
+# Polyphonic analysis options
+SPECTRAL_POLYPHONIC = False  # Enable polyphonic harmonic grouping (detect multiple simultaneous voices)
+SPECTRAL_POLYPHONIC_TOLERANCE_CENTS = 50  # Tolerance for grouping peaks into harmonic series
+SPECTRAL_POLYPHONIC_MIN_HARMONICS = 3  # Minimum harmonics required to identify a voice
+SPECTRAL_POLYPHONIC_MAX_VOICES = 4  # Maximum simultaneous voices to detect
 
 ###############  USER INTERACTION / PRINTING  ##############
 SEARCH_PATHS = []

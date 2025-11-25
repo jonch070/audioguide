@@ -56,44 +56,42 @@ class DescriptorBackend(ABC):
 
 class IRCAMBackend(DescriptorBackend):
     """
-    IRCAM descriptor analysis backend (current AudioGuide system).
+    IRCAM descriptor analysis backend.
 
-    Uses AudioGuide's existing IRCAM-based descriptor extraction.
-    This is the default and most tested backend.
+    NOTE: This backend is NOT actually needed for normal AudioGuide operation!
+    AudioGuide's existing descriptor system already computes IRCAM descriptors
+    for all corpus files, and these are accessed via seg.desc.get('f0-seg').
+
+    This backend exists mainly as a reference implementation and fallback.
+    In practice, you should simply NOT set DESCRIPTOR_ANALYSIS_TOOL to use
+    the existing IRCAM descriptors (which is faster and better integrated).
+
+    This backend is included for:
+    1. Reference implementation for other backends
+    2. Future use if custom IRCAM re-analysis is needed
+    3. Completeness of the backend system
     """
 
     def __init__(self, verbose=False):
         super().__init__(verbose)
-        # Import here to avoid circular dependencies
-        from . import util
-        self.util = util
+        if verbose:
+            print("WARNING: IRCAMBackend is not needed - use default descriptors instead")
+            print("(Don't set DESCRIPTOR_ANALYSIS_TOOL for standard IRCAM analysis)")
 
     def analyze_file(self, audio_path):
         """
-        Analyze using IRCAM descriptors (current AudioGuide method).
+        Placeholder - IRCAM descriptors are already computed by AudioGuide.
 
-        This wraps the existing util.getForAnalysisDescriptor() function.
+        Returns failure to indicate that default IRCAM descriptors should be used.
         """
-        try:
-            # Use existing IRCAM analysis
-            f0 = self.util.getForAnalysisDescriptor(audio_path)
-
-            return {
-                'f0': f0,
-                'success': True,
-                'error': None
-            }
-        except Exception as e:
-            if self.verbose:
-                print(f"WARNING: IRCAM analysis failed for {audio_path}: {e}")
-            return {
-                'f0': 0.0,
-                'success': False,
-                'error': str(e)
-            }
+        return {
+            'f0': 0.0,
+            'success': False,
+            'error': 'IRCAMBackend not implemented - use default IRCAM descriptors'
+        }
 
     def get_name(self):
-        return "IRCAM"
+        return "IRCAM (use default descriptors instead)"
 
 
 class FluCoMaBackend(DescriptorBackend):

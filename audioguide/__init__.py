@@ -367,6 +367,17 @@ spass('closest', d('X', norm=1), d('Y', norm=1))
 		# postLimitSegmentNormList is a list of corpusSegment objects
 		all_corpus_segments = self.cps.postLimitSegmentNormList
 
+		# Optionally compute f0 using pluggable descriptor backends
+		backend_name = getattr(self.ops, 'DESCRIPTOR_ANALYSIS_TOOL', None)
+		if backend_name and backend_name.lower() != 'default':
+			self.p.log("Using %s backend for corpus f0 analysis...\n" % backend_name)
+			analyzed_count = spectrallayering.compute_corpus_spectral_f0(
+				all_corpus_segments,
+				backend_name=backend_name,
+				verbose=(self.ops.VERBOSITY >= 1)
+			)
+			self.p.log("  Analyzed %d corpus files with %s backend\n" % (analyzed_count, backend_name))
+
 		##############################
 		## Determine target segments to process ##
 		##############################

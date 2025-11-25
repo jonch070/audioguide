@@ -212,6 +212,7 @@ UserVar_types = {
 'SPECTRAL_KEY_AWARE': ['True or False'],
 'SPECTRAL_KEY_ROOT': ['a string'],
 'SPECTRAL_SCALE_TYPE': ['a string'],
+'DESCRIPTOR_ANALYSIS_TOOL': ['a string'],
 
 ################  USER INTERACTION / PRINTING  ##############
 'SEARCH_PATHS': ['a list of strings'],
@@ -339,6 +340,7 @@ OptionChangeToProgramRun = {
 "SPECTRAL_KEY_AWARE": "concate",
 "SPECTRAL_KEY_ROOT": "concate",
 "SPECTRAL_SCALE_TYPE": "concate",
+"DESCRIPTOR_ANALYSIS_TOOL": "concate",
 
 "SEARCH_PATHS": "reinit",
 "VERBOSITY": "reinit",

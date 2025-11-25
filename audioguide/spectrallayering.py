@@ -21,6 +21,65 @@ import soundfile as sf
 import audioguide.spectralanalysis as spectralanalysis
 
 
+def compute_corpus_spectral_f0(corpus_segments, backend_name='ircam', verbose=False):
+    """
+    Compute fundamental frequency for corpus segments using pluggable backends.
+
+    Adds 'spectral_f0' attribute to each segment that doesn't already have it.
+    This allows using different analysis tools (IRCAM, FluCoMa, etc.) for pitch detection.
+
+    Args:
+        corpus_segments: List of corpus segment objects
+        backend_name: Name of backend to use ('ircam', 'flucoma')
+        verbose: Print progress information
+
+    Returns:
+        Number of segments successfully analyzed
+    """
+    try:
+        from audioguide import descriptor_backends
+    except ImportError:
+        if verbose:
+            print("WARNING: descriptor_backends module not found, falling back to IRCAM descriptors")
+        return 0
+
+    try:
+        backend = descriptor_backends.get_backend(backend_name, verbose=verbose)
+    except ValueError as e:
+        if verbose:
+            print(f"WARNING: {e}, using IRCAM instead")
+        backend = descriptor_backends.get_backend('ircam', verbose=verbose)
+
+    if verbose:
+        print(f"Computing spectral f0 using {backend.get_name()} backend for {len(corpus_segments)} segments...")
+
+    success_count = 0
+    for i, seg in enumerate(corpus_segments):
+        # Skip if already has spectral_f0
+        if hasattr(seg, 'spectral_f0') and seg.spectral_f0 > 0:
+            success_count += 1
+            continue
+
+        # Analyze file using backend
+        result = backend.analyze_file(seg.filename)
+
+        if result['success'] and result['f0'] > 0:
+            seg.spectral_f0 = result['f0']
+            success_count += 1
+        else:
+            seg.spectral_f0 = 0
+            if verbose and result['error']:
+                print(f"  WARNING: Failed to analyze {seg.filename}: {result['error']}")
+
+        if verbose and (i + 1) % 100 == 0:
+            print(f"  Processed {i + 1}/{len(corpus_segments)} segments...")
+
+    if verbose:
+        print(f"Successfully analyzed {success_count}/{len(corpus_segments)} corpus segments")
+
+    return success_count
+
+
 def freq_to_cents(freq1, freq2):
     """
     Calculate interval in cents between two frequencies.

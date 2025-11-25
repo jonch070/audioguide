@@ -98,10 +98,10 @@ class FluCoMaBackend(DescriptorBackend):
     """
     FluCoMa descriptor analysis backend.
 
-    Uses the FluCoMa toolkit for pitch detection and descriptor extraction.
-    Requires: pip install flucoma-python
+    Uses the FluCoMa CLI tools for pitch detection and descriptor extraction.
+    Requires: fluid-pitch command in PATH (install from https://www.flucoma.org/download/)
 
-    Falls back to IRCAM if FluCoMa is not installed.
+    Falls back to IRCAM if FluCoMa CLI is not installed.
     """
 
     def __init__(self, verbose=False):
@@ -109,20 +109,31 @@ class FluCoMaBackend(DescriptorBackend):
         self.flucoma_available = False
         self.fallback_backend = None
 
-        # Try to import FluCoMa
-        try:
-            import flucoma
-            from flucoma.utils import get_buffer
-            self.flucoma = flucoma
-            self.get_buffer = get_buffer
+        # Check if fluid-pitch CLI is available
+        import shutil
+        fluid_pitch_path = shutil.which('fluid-pitch')
+
+        if fluid_pitch_path:
             self.flucoma_available = True
-
+            self.fluid_pitch_path = fluid_pitch_path
             if self.verbose:
-                print(f"FluCoMa backend initialized (version {flucoma.__version__})")
-
-        except ImportError:
+                # Get version
+                import subprocess
+                try:
+                    version_output = subprocess.check_output(
+                        [fluid_pitch_path, '--help'],
+                        stderr=subprocess.STDOUT,
+                        text=True
+                    )
+                    version_line = [l for l in version_output.split('\n') if 'version' in l.lower()]
+                    version_str = version_line[0] if version_line else "unknown version"
+                    print(f"FluCoMa backend initialized ({version_str})")
+                except:
+                    print("FluCoMa backend initialized")
+        else:
             if self.verbose:
-                print("WARNING: FluCoMa not installed. Install with: pip install flucoma-python")
+                print("WARNING: FluCoMa CLI tools not found in PATH")
+                print("Install from: https://www.flucoma.org/download/")
                 print("Falling back to IRCAM backend.")
 
             # Create fallback to IRCAM
@@ -130,9 +141,9 @@ class FluCoMaBackend(DescriptorBackend):
 
     def analyze_file(self, audio_path):
         """
-        Analyze using FluCoMa pitch detection.
+        Analyze using FluCoMa CLI pitch detection.
 
-        Uses FluCoMa's Pitch algorithm for fundamental frequency estimation.
+        Calls fluid-pitch command-line tool for fundamental frequency estimation.
         Falls back to IRCAM if FluCoMa is not available.
         """
         # Fallback if FluCoMa not available
@@ -140,29 +151,49 @@ class FluCoMaBackend(DescriptorBackend):
             return self.fallback_backend.analyze_file(audio_path)
 
         try:
+            import subprocess
+            import tempfile
             import soundfile as sf
 
-            # Load audio
-            audio_data, sr = sf.read(audio_path)
+            # Create temporary output file for pitch data
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_output:
+                output_path = tmp_output.name
 
-            # Convert to mono if stereo
-            if len(audio_data.shape) > 1:
-                audio_data = audio_data.mean(axis=1)
+            # Run fluid-pitch CLI
+            # Algorithm: 0=cepstrum, 1=harmonic product spectrum, 2=YIN (default)
+            cmd = [
+                self.fluid_pitch_path,
+                '-source', audio_path,
+                '-features', output_path,
+                '-algorithm', '2',  # YIN algorithm
+                '-minfreq', '80',
+                '-maxfreq', '2000'
+            ]
 
-            # Use FluCoMa Pitch algorithm
-            from flucoma import pitch
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True
+            )
 
-            # Analyze pitch across whole file
-            pitch_data = pitch(audio_data, sr,
-                             algorithm='cepstrum',  # Can also use 'harmonic' or 'yin'
-                             minFreq=80,
-                             maxFreq=2000,
-                             hopSize=512)
+            # Read the pitch data from output file
+            pitch_data, sr = sf.read(output_path)
 
-            # Extract median pitch (ignore zeros/unvoiced frames)
-            pitched_frames = pitch_data[pitch_data > 0]
+            # Clean up temp file
+            import os
+            os.unlink(output_path)
 
-            if len(pitched_frames) == 0:
+            # Extract pitch values (first column is pitch in Hz, second is confidence)
+            if len(pitch_data.shape) == 1:
+                pitches = pitch_data
+            else:
+                pitches = pitch_data[:, 0]  # First column is pitch
+
+            # Extract median pitch from voiced frames (pitch > 0)
+            voiced_pitches = pitches[pitches > 0]
+
+            if len(voiced_pitches) == 0:
                 if self.verbose:
                     print(f"WARNING: FluCoMa pitch detection found no pitched content in {audio_path}")
                 return {
@@ -172,13 +203,13 @@ class FluCoMaBackend(DescriptorBackend):
                 }
 
             # Use median pitch as representative f0
-            f0 = float(np.median(pitched_frames))
+            f0 = float(np.median(voiced_pitches))
 
             return {
                 'f0': f0,
                 'success': True,
                 'error': None,
-                'pitch_data': pitch_data  # Optional: full pitch track
+                'pitch_data': pitches  # Optional: full pitch track
             }
 
         except Exception as e:
@@ -204,10 +235,114 @@ class FluCoMaBackend(DescriptorBackend):
             return "FluCoMa (unavailable, using IRCAM fallback)"
 
 
+class LibrosaBackend(DescriptorBackend):
+    """
+    Librosa descriptor analysis backend.
+
+    Uses Librosa's pYIN algorithm for pitch detection and descriptor extraction.
+    Requires: pip install librosa
+
+    Falls back to IRCAM if Librosa is not installed.
+    """
+
+    def __init__(self, verbose=False):
+        super().__init__(verbose)
+        self.librosa_available = False
+        self.fallback_backend = None
+
+        # Try to import Librosa
+        try:
+            import librosa
+            self.librosa = librosa
+            self.librosa_available = True
+
+            if self.verbose:
+                print(f"Librosa backend initialized (version {librosa.__version__})")
+
+        except ImportError:
+            if self.verbose:
+                print("WARNING: Librosa not installed. Install with: pip install librosa")
+                print("Falling back to IRCAM backend.")
+
+            # Create fallback to IRCAM
+            self.fallback_backend = IRCAMBackend(verbose=verbose)
+
+    def analyze_file(self, audio_path):
+        """
+        Analyze using Librosa pYIN pitch detection.
+
+        Uses Librosa's pYIN algorithm for fundamental frequency estimation.
+        Falls back to IRCAM if Librosa is not available.
+        """
+        # Fallback if Librosa not available
+        if not self.librosa_available:
+            return self.fallback_backend.analyze_file(audio_path)
+
+        try:
+            # Load audio
+            y, sr = self.librosa.load(audio_path, sr=None, mono=True)
+
+            # Use pYIN for pitch detection
+            f0, voiced_flag, voiced_probs = self.librosa.pyin(
+                y,
+                sr=sr,
+                fmin=self.librosa.note_to_hz('C2'),  # ~65 Hz
+                fmax=self.librosa.note_to_hz('C7'),  # ~2093 Hz
+                frame_length=2048
+            )
+
+            # Extract median pitch from voiced frames
+            voiced_f0 = f0[voiced_flag]
+
+            if len(voiced_f0) == 0:
+                if self.verbose:
+                    print(f"WARNING: Librosa pYIN found no pitched content in {audio_path}")
+                return {
+                    'f0': 0.0,
+                    'success': False,
+                    'error': 'No pitched content detected'
+                }
+
+            # Use median pitch as representative f0
+            median_f0 = float(np.nanmedian(voiced_f0))
+
+            return {
+                'f0': median_f0,
+                'success': True,
+                'error': None,
+                'pitch_data': f0,  # Optional: full pitch track
+                'voiced_flag': voiced_flag,
+                'voiced_probs': voiced_probs
+            }
+
+        except Exception as e:
+            if self.verbose:
+                print(f"WARNING: Librosa analysis failed for {audio_path}: {e}")
+
+            # Try fallback to IRCAM
+            if self.fallback_backend:
+                if self.verbose:
+                    print(f"  Falling back to IRCAM for {audio_path}")
+                return self.fallback_backend.analyze_file(audio_path)
+
+            return {
+                'f0': 0.0,
+                'success': False,
+                'error': str(e)
+            }
+
+    def get_name(self):
+        if self.librosa_available:
+            return "Librosa"
+        else:
+            return "Librosa (unavailable, using IRCAM fallback)"
+
+
 # Backend registry
 AVAILABLE_BACKENDS = {
     'ircam': IRCAMBackend,
     'flucoma': FluCoMaBackend,
+    'librosa': LibrosaBackend,
 }
 
 

@@ -627,3 +627,42 @@ descriptToFiles = [
 descriptIsAmp = ["power", "spectralpower", "noiseenergy", "loudness", "harmonicenergy", "energyenvelope"]
 
 descriptNotMixable = ["f0", "zeroCross", "effDur-seg"]
+
+#############################################################
+## FLUCOMA DESCRIPTORS                                      #
+## FluCoMa descriptors use 'flucoma' prefix to avoid       ##
+## collision with IRCAM descriptors (e.g., 'flucomapitch'  ##
+## vs IRCAM 'f0-seg')                                     ##
+#############################################################
+flucomaDescriptorPrefix = 'flucoma'
+
+# Mapping from FluCoMa tool to descriptor names
+# These map to the actual FluCoMa output columns
+flucomaDescriptors = [
+    # MFCCs (13 coefficients)
+    ('flucomamfcc1', 'flucoma', False, True, 'MFCC', 13, 0),
+    ('flucomamfcc2', 'flucoma', False, True, 'MFCC', 13, 1),
+    ('flucomamfcc3', 'flucoma', False, True, 'MFCC', 13, 2),
+    ('flucomamfcc4', 'flucoma', False, True, 'MFCC', 13, 3),
+    ('flucomamfcc5', 'flucoma', False, True, 'MFCC', 13, 4),
+    ('flucomamfcc6', 'flucoma', False, True, 'MFCC', 13, 5),
+    ('flucomamfcc7', 'flucoma', False, True, 'MFCC', 13, 6),
+    ('flucomamfcc8', 'flucoma', False, True, 'MFCC', 13, 7),
+    ('flucomamfcc9', 'flucoma', False, True, 'MFCC', 13, 8),
+    ('flucomamfcc10', 'flucoma', False, True, 'MFCC', 13, 9),
+    ('flucomamfcc11', 'flucoma', False, True, 'MFCC', 13, 10),
+    ('flucomamfcc12', 'flucoma', False, True, 'MFCC', 13, 11),
+    ('flucomamfcc13', 'flucoma', False, True, 'MFCC', 13, 12),
+    # Spectral Shape (7 values)
+    ('flucomaspectral_centroid', 'flucoma', False, True, 'SpectralShape', 7, 0),
+    ('flucomaspectral_spread', 'flucoma', False, True, 'SpectralShape', 7, 1),
+    ('flucomaspectral_skewness', 'flucoma', False, True, 'SpectralShape', 7, 2),
+    ('flucomaspectral_kurtosis', 'flucoma', False, True, 'SpectralShape', 7, 3),
+    ('flucomaspectral_rolloff', 'flucoma', False, True, 'SpectralShape', 7, 4),
+    ('flucomaspectral_flatness', 'flucoma', False, True, 'SpectralShape', 7, 5),
+    ('flucomaspectral_crest', 'flucoma', False, True, 'SpectralShape', 7, 6),
+    # Loudness
+    ('flucomaloudness', 'flucoma', False, True, 'Loudness', 1, 0),
+    # Pitch
+    ('flucomapitch', 'flucoma', False, True, 'Pitch', 1, 0),
+]

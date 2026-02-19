@@ -336,4 +336,55 @@ __all__ = [
     'extract_loudness',
     'extract_mfcc',
     'extract_spectralshape',
+    'resolve_preset',
 ]
+
+
+def resolve_preset(preset_name: str) -> List[str]:
+    """
+    Resolve a preset name to a list of FluCoMa descriptor names.
+
+    Args:
+        preset_name: Name of preset ('timbre', 'harmony', 'loudness', 'pitch', 'full')
+                     or None to return empty list
+
+    Returns:
+        List of FluCoMa descriptor names with 'flucoma' prefix
+
+    Raises:
+        ValueError: If preset_name is not a valid preset
+    """
+    # Define presets inline to avoid circular imports
+    FLUCOMA_PRESETS = {
+        'timbre': [
+            'flucomamfcc1', 'flucomamfcc2', 'flucomamfcc3', 'flucomamfcc4', 'flucomamfcc5',
+            'flucomaspectral_centroid', 'flucomapitch'
+        ],
+        'harmony': [
+            'flucomapitch', 'flucomaspectral_centroid', 'flucomaspectral_flatness',
+            'flucomamfcc1', 'flucomamfcc2', 'flucomamfcc3'
+        ],
+        'loudness': ['flucomaloudness', 'flucomaspectral_centroid'],
+        'pitch': ['flucomapitch'],
+        'full': [
+            'flucomamfcc1', 'flucomamfcc2', 'flucomamfcc3', 'flucomamfcc4', 'flucomamfcc5',
+            'flucomamfcc6', 'flucomamfcc7', 'flucomamfcc8', 'flucomamfcc9', 'flucomamfcc10',
+            'flucomamfcc11', 'flucomamfcc12', 'flucomamfcc13',
+            'flucomaspectral_centroid', 'flucomaspectral_spread', 'flucomaspectral_skewness',
+            'flucomaspectral_kurtosis', 'flucomaspectral_rolloff', 'flucomaspectral_flatness',
+            'flucomaspectral_crest', 'flucomaloudness', 'flucomapitch'
+        ]
+    }
+
+    if preset_name is None:
+        return []
+
+    if preset_name not in FLUCOMA_PRESETS:
+        valid_presets = ', '.join(FLUCOMA_PRESETS.keys())
+        raise ValueError(
+            f"Invalid FLUCOMA_PRESET '{preset_name}'. "
+            f"Valid presets: {valid_presets}"
+        )
+
+    # Return the descriptor list (already has 'flucoma' prefix)
+    return FLUCOMA_PRESETS[preset_name]

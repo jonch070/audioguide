@@ -219,7 +219,7 @@ UserVar_types = {
 'FLUCOMA_MFCC_COUNT': ['an integer greater than zero'],
 'FLUCOMA_NORMALIZE': ['True or False'],
 'FLUCOMA_CACHE_CORPUS': ['True or False'],
-'FLUCOMA_PRESET': ['a string or None'],
+'FLUCOMA_PRESET': ['a string in FLUCOMA_PRESETS.keys() or None'],
 
 'DESCRIPTOR_ANALYSIS_TOOL': ['a string'],
 

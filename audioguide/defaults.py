@@ -128,6 +128,33 @@ FLUCOMA_CACHE_CORPUS = True  # Cache corpus descriptors for performance
 # Presets (can be set via FLUCOMA_PRESET)
 FLUCOMA_PRESET = None  # 'timbre', 'harmony', 'loudness', 'pitch', or None
 
+# FluCoMa descriptor presets
+FLUCOMA_PRESETS = {
+    # Standard timbre matching: MFCCs + spectral centroid + pitch
+    'timbre': [
+        'flucomamfcc1', 'flucomamfcc2', 'flucomamfcc3', 'flucomamfcc4', 'flucomamfcc5',
+        'flucomaspectral_centroid', 'flucomapitch'
+    ],
+    # Harmony: pitch + spectral + selected MFCCs
+    'harmony': [
+        'flucomapitch', 'flucomaspectral_centroid', 'flucomaspectral_flatness',
+        'flucomamfcc1', 'flucomamfcc2', 'flucomamfcc3'
+    ],
+    # Loudness-focused
+    'loudness': ['flucomaloudness', 'flucomaspectral_centroid'],
+    # Pitch only
+    'pitch': ['flucomapitch'],
+    # Full: all available FluCoMa descriptors
+    'full': [
+        'flucomamfcc1', 'flucomamfcc2', 'flucomamfcc3', 'flucomamfcc4', 'flucomamfcc5',
+        'flucomamfcc6', 'flucomamfcc7', 'flucomamfcc8', 'flucomamfcc9', 'flucomamfcc10',
+        'flucomamfcc11', 'flucomamfcc12', 'flucomamfcc13',
+        'flucomaspectral_centroid', 'flucomaspectral_spread', 'flucomaspectral_skewness',
+        'flucomaspectral_kurtosis', 'flucomaspectral_rolloff', 'flucomaspectral_flatness',
+        'flucomaspectral_crest', 'flucomaloudness', 'flucomapitch'
+    ]
+}
+
 ###############  USER INTERACTION / PRINTING  ##############
 SEARCH_PATHS = []
 VERBOSITY = 2

@@ -180,6 +180,72 @@ class descriptor_manager:
 		elif coeffDict['method'] == 'sigmoid':
 			return 1/(1+np.exp(-dataarray/coeffDict['max']))
 	########################################
+	def normalize_flucoma_descriptors(self, segment_objs, descriptor_names):
+		"""
+		Normalize FluCoMa descriptors to 0-1 range using min-max normalization.
+		
+		This function computes min/max values across all segments for each FluCoMa
+		descriptor and normalizes them to [0, 1] range.
+		
+		Args:
+			segment_objs: List of segment objects with flucoma descriptor data
+			descriptor_names: List of FluCoMa descriptor names to normalize
+			                 (e.g., ['flucomamfcc1', 'flucomaspectral_centroid'])
+		
+		Returns:
+			Dictionary mapping descriptor names to normalization coefficients:
+				{descriptor_name: {'min': float, 'max': float}}
+		"""
+		# Check if FLUCOMA_NORMALIZE is enabled
+		try:
+			from audioguide import defaults
+			if not getattr(defaults, 'FLUCOMA_NORMALIZE', True):
+				return {}
+		except ImportError:
+			pass
+		
+		# Collect all values for each descriptor across all segments
+		descriptor_values = {desc: [] for desc in descriptor_names}
+		
+		for seg in segment_objs:
+			for desc_name in descriptor_names:
+				# Try to get the descriptor value from the segment
+				# FluCoMa descriptors are stored with 'flucoma' prefix
+				desc_value = seg.desc.get(desc_name)
+				if desc_value is not None:
+					descriptor_values[desc_name].append(desc_value)
+		
+		# Compute normalization coefficients
+		norm_coefficients = {}
+		
+		for desc_name, values in descriptor_values.items():
+			if len(values)				continue
+			
+ == 0:
+			values_array = np.array(values)
+			desc_min = np.min(values_array)
+			desc_max = np.max(values_array)
+			desc_range = desc_max - desc_min
+			
+			if desc_range > 0:
+				norm_coefficients[desc_name] = {
+					'min': float(desc_min),
+					'max': float(desc_max),
+					'range': float(desc_range)
+				}
+				
+				# Normalize each segment's value
+				for seg in segment_objs:
+					desc_value = seg.desc.get(desc_name)
+					if desc_value is not None:
+						# Normalize to 0-1 range
+						normalized_value = (desc_value - desc_min) / desc_range
+						# Store as normalized descriptor
+						normalized_name = f"{desc_name}_normalized"
+						seg.desc.segmented_dataspace[normalized_name] = normalized_value
+		
+		return norm_coefficients
+	########################################
 	def create_sf_descriptor_obj(self, sfseghandle, rawmatrix, startframe_in_matrix, length_in_matrix, tag=None, envelope=None):
 		'''this function gets a new class sf_segment_descriptors and links it to the overlord'''
 		if sfseghandle.filename not in self.sffile2matrix:

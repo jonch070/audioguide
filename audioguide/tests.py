@@ -212,6 +212,15 @@ UserVar_types = {
 'SPECTRAL_KEY_AWARE': ['True or False'],
 'SPECTRAL_KEY_ROOT': ['a string'],
 'SPECTRAL_SCALE_TYPE': ['a string'],
+
+###############  FLUCOMA DESCRIPTORS  ##############
+'FLUCOMA_ENABLE': ['True or False'],
+'FLUCOMA_DESCRIPTORS': ['a list of strings'],
+'FLUCOMA_MFCC_COUNT': ['an integer greater than zero'],
+'FLUCOMA_NORMALIZE': ['True or False'],
+'FLUCOMA_CACHE_CORPUS': ['True or False'],
+'FLUCOMA_PRESET': ['a string or None'],
+
 'DESCRIPTOR_ANALYSIS_TOOL': ['a string'],
 
 ################  USER INTERACTION / PRINTING  ##############

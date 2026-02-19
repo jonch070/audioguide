@@ -118,6 +118,16 @@ SPECTRAL_POLYPHONIC_TOLERANCE_CENTS = 50  # Tolerance for grouping peaks into ha
 SPECTRAL_POLYPHONIC_MIN_HARMONICS = 3  # Minimum harmonics required to identify a voice
 SPECTRAL_POLYPHONIC_MAX_VOICES = 4  # Maximum simultaneous voices to detect
 
+###############  FLUCOMA DESCRIPTORS  ##############
+FLUCOMA_ENABLE = False  # Enable FluCoMa descriptor extraction
+FLUCOMA_DESCRIPTORS = ['mfcc', 'spectralshape', 'loudness', 'pitch']  # Descriptors to extract
+FLUCOMA_MFCC_COUNT = 13  # Number of MFCC coefficients (default 13)
+FLUCOMA_NORMALIZE = True  # Normalize to 0-1 range (min-max)
+FLUCOMA_CACHE_CORPUS = True  # Cache corpus descriptors for performance
+
+# Presets (can be set via FLUCOMA_PRESET)
+FLUCOMA_PRESET = None  # 'timbre', 'harmony', 'loudness', 'pitch', or None
+
 ###############  USER INTERACTION / PRINTING  ##############
 SEARCH_PATHS = []
 VERBOSITY = 2

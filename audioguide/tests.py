@@ -349,6 +349,14 @@ OptionChangeToProgramRun = {
 "SPECTRAL_KEY_AWARE": "concate",
 "SPECTRAL_KEY_ROOT": "concate",
 "SPECTRAL_SCALE_TYPE": "concate",
+
+"FLUCOMA_ENABLE": "corpus",
+"FLUCOMA_DESCRIPTORS": "corpus",
+"FLUCOMA_MFCC_COUNT": "corpus",
+"FLUCOMA_NORMALIZE": "norm",
+"FLUCOMA_CACHE_CORPUS": "corpus",
+"FLUCOMA_PRESET": "corpus",
+
 "DESCRIPTOR_ANALYSIS_TOOL": "concate",
 
 "SEARCH_PATHS": "reinit",

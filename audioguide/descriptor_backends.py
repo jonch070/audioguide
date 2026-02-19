@@ -99,35 +99,50 @@ class FluCoMaBackend(DescriptorBackend):
     FluCoMa descriptor analysis backend.
 
     Uses the FluCoMa CLI tools for pitch detection and descriptor extraction.
-    Requires: fluid-pitch command in PATH (install from https://www.flucoma.org/download/)
+    Requires: fluid-pitch, fluid-mfcc, fluid-spectralshape, fluid-loudness commands in PATH
+    (install from https://www.flucoma.org/download/)
 
     Falls back to IRCAM if FluCoMa CLI is not installed.
     """
+
+    # Default FFT settings matching AudioGuide's descriptor computation
+    DEFAULT_FFT_SIZE = 2048
+    DEFAULT_HOP_SIZE = 1024
 
     def __init__(self, verbose=False):
         super().__init__(verbose)
         self.flucoma_available = False
         self.fallback_backend = None
 
-        # Check if fluid-pitch CLI is available
+        # Check availability of all FluCoMa CLI tools
         import shutil
-        fluid_pitch_path = shutil.which('fluid-pitch')
+        self.tools = {
+            'pitch': shutil.which('fluid-pitch'),
+            'mfcc': shutil.which('fluid-mfcc'),
+            'spectralshape': shutil.which('fluid-spectralshape'),
+            'loudness': shutil.which('fluid-loudness'),
+        }
 
-        if fluid_pitch_path:
+        # Check if at least pitch is available (minimum requirement)
+        if self.tools['pitch']:
             self.flucoma_available = True
-            self.fluid_pitch_path = fluid_pitch_path
+            self.fluid_pitch_path = self.tools['pitch']
             if self.verbose:
                 # Get version
                 import subprocess
                 try:
                     version_output = subprocess.check_output(
-                        [fluid_pitch_path, '--help'],
+                        [self.fluid_pitch_path, '--help'],
                         stderr=subprocess.STDOUT,
                         text=True
                     )
                     version_line = [l for l in version_output.split('\n') if 'version' in l.lower()]
                     version_str = version_line[0] if version_line else "unknown version"
                     print(f"FluCoMa backend initialized ({version_str})")
+                    
+                    # Report available tools
+                    available = [k for k, v in self.tools.items() if v]
+                    print(f"  Available tools: {', '.join(available)}")
                 except:
                     print("FluCoMa backend initialized")
         else:
@@ -139,78 +154,58 @@ class FluCoMaBackend(DescriptorBackend):
             # Create fallback to IRCAM
             self.fallback_backend = IRCAMBackend(verbose=verbose)
 
-    def analyze_file(self, audio_path):
+    def analyze_file(self, audio_path, descriptors=None):
         """
-        Analyze using FluCoMa CLI pitch detection.
+        Analyze using FluCoMa CLI tools for pitch detection and descriptor extraction.
 
-        Calls fluid-pitch command-line tool for fundamental frequency estimation.
-        Falls back to IRCAM if FluCoMa is not available.
+        Args:
+            audio_path: Path to audio file
+            descriptors: Optional list of descriptor types to extract.
+                        Supported: 'mfcc', 'spectralshape', 'loudness', 'pitch'
+                        If None, extracts only pitch (backward compatible).
+
+        Returns:
+            Dictionary with at least:
+            {
+                'f0': float,           # Fundamental frequency in Hz (0 if detection failed)
+                'success': bool,       # Whether analysis succeeded
+                'error': str or None   # Error message if failed
+            }
+
+            May include additional descriptors depending on backend and requested descriptors.
         """
+        # Default to pitch only for backward compatibility
+        if descriptors is None:
+            descriptors = ['pitch']
+        
         # Fallback if FluCoMa not available
         if not self.flucoma_available:
             return self.fallback_backend.analyze_file(audio_path)
 
+        result = {
+            'f0': 0.0,
+            'success': True,
+            'error': None,
+        }
+
         try:
-            import subprocess
-            import tempfile
-            import soundfile as sf
+            # Extract requested descriptors
+            for desc_type in descriptors:
+                if desc_type == 'pitch':
+                    pitch_result = self._extract_pitch(audio_path)
+                    result['f0'] = pitch_result.get('f0', 0.0)
+                    result['pitch_data'] = pitch_result.get('pitch_data')
+                elif desc_type == 'mfcc':
+                    result['mfcc'] = self._extract_mfcc(audio_path)
+                elif desc_type == 'spectralshape':
+                    result['spectralshape'] = self._extract_spectralshape(audio_path)
+                elif desc_type == 'loudness':
+                    result['loudness'] = self._extract_loudness(audio_path)
+                else:
+                    if self.verbose:
+                        print(f"WARNING: Unknown descriptor type '{desc_type}'")
 
-            # Create temporary output file for pitch data
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_output:
-                output_path = tmp_output.name
-
-            # Run fluid-pitch CLI
-            # Algorithm: 0=cepstrum, 1=harmonic product spectrum, 2=YIN (default)
-            cmd = [
-                self.fluid_pitch_path,
-                '-source', audio_path,
-                '-features', output_path,
-                '-algorithm', '2',  # YIN algorithm
-                '-minfreq', '80',
-                '-maxfreq', '2000'
-            ]
-
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                check=True
-            )
-
-            # Read the pitch data from output file
-            pitch_data, sr = sf.read(output_path)
-
-            # Clean up temp file
-            import os
-            os.unlink(output_path)
-
-            # Extract pitch values (first column is pitch in Hz, second is confidence)
-            if len(pitch_data.shape) == 1:
-                pitches = pitch_data
-            else:
-                pitches = pitch_data[:, 0]  # First column is pitch
-
-            # Extract median pitch from voiced frames (pitch > 0)
-            voiced_pitches = pitches[pitches > 0]
-
-            if len(voiced_pitches) == 0:
-                if self.verbose:
-                    print(f"WARNING: FluCoMa pitch detection found no pitched content in {audio_path}")
-                return {
-                    'f0': 0.0,
-                    'success': False,
-                    'error': 'No pitched content detected'
-                }
-
-            # Use median pitch as representative f0
-            f0 = float(np.median(voiced_pitches))
-
-            return {
-                'f0': f0,
-                'success': True,
-                'error': None,
-                'pitch_data': pitches  # Optional: full pitch track
-            }
+            return result
 
         except Exception as e:
             if self.verbose:
@@ -227,6 +222,291 @@ class FluCoMaBackend(DescriptorBackend):
                 'success': False,
                 'error': str(e)
             }
+
+    def _extract_pitch(self, audio_path):
+        """
+        Extract pitch using fluid-pitch.
+
+        Args:
+            audio_path: Path to audio file
+
+        Returns:
+            Dictionary with 'f0' and 'pitch_data'
+        """
+        import subprocess
+        import tempfile
+        import soundfile as sf
+        import os
+
+        # Create temporary output file for pitch data
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_output:
+            output_path = tmp_output.name
+
+        try:
+            # Run fluid-pitch CLI
+            # Algorithm: 0=cepstrum, 1=harmonic product spectrum, 2=YIN (default)
+            cmd = [
+                self.tools['pitch'],
+                '-source', audio_path,
+                '-features', output_path,
+                '-algorithm', '2',  # YIN algorithm
+                '-minfreq', '80',
+                '-maxfreq', '2000',
+                '-fftsettings', str(self.DEFAULT_FFT_SIZE), str(self.DEFAULT_HOP_SIZE)
+            ]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+            # Read the pitch data from output file
+            pitch_data, sr = sf.read(output_path)
+
+            # Extract pitch values (first column is pitch in Hz, second is confidence)
+            if len(pitch_data.shape) == 1:
+                pitches = pitch_data
+            else:
+                pitches = pitch_data[:, 0]  # First column is pitch
+
+            # Extract median pitch from voiced frames (pitch > 0)
+            voiced_pitches = pitches[pitches > 0]
+
+            if len(voiced_pitches) == 0:
+                return {
+                    'f0': 0.0,
+                    'pitch_data': pitches,
+                    'success': False,
+                    'error': 'No pitched content detected'
+                }
+
+            # Use median pitch as representative f0
+            f0 = float(np.median(voiced_pitches))
+
+            return {
+                'f0': f0,
+                'pitch_data': pitches,
+                'success': True,
+                'error': None
+            }
+
+        finally:
+            # Clean up temp file
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+
+    def _extract_mfcc(self, audio_path):
+        """
+        Extract MFCC coefficients using fluid-mfcc.
+
+        Args:
+            audio_path: Path to audio file
+
+        Returns:
+            Dictionary with MFCC coefficients and metadata
+        """
+        import subprocess
+        import tempfile
+        import soundfile as sf
+        import os
+
+        # Get MFCC count from config or use default
+        try:
+            from audioguide import defaults
+            num_coeffs = getattr(defaults, 'FLUCOMA_MFCC_COUNT', 13)
+        except ImportError:
+            num_coeffs = 13
+
+        # Create temporary output file for MFCC data
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_output:
+            output_path = tmp_output.name
+
+        try:
+            # Run fluid-mfcc CLI
+            cmd = [
+                self.tools['mfcc'],
+                '-source', audio_path,
+                '-mfcc', output_path,
+                '-numcoeffs', str(num_coeffs),
+                '-fftsettings', str(self.DEFAULT_FFT_SIZE), str(self.DEFAULT_HOP_SIZE)
+            ]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+            # Read the MFCC data from output file
+            mfcc_data, sr = sf.read(output_path)
+
+            # MFCC output: frames x (numCoeffs + 1) - first column is RMS
+            # Extract just the MFCC coefficients (skip RMS)
+            if len(mfcc_data.shape) == 2:
+                mfcc_coeffs = mfcc_data[:, 1:]  # Skip RMS column
+            else:
+                mfcc_coeffs = mfcc_data.reshape(-1, 1)
+
+            # Compute statistics across frames for each coefficient
+            mfcc_stats = {
+                'mean': np.mean(mfcc_coeffs, axis=0).tolist(),
+                'std': np.std(mfcc_coeffs, axis=0).tolist(),
+                'min': np.min(mfcc_coeffs, axis=0).tolist(),
+                'max': np.max(mfcc_coeffs, axis=0).tolist(),
+            }
+
+            return {
+                'coefficients': mfcc_coeffs,
+                'statistics': mfcc_stats,
+                'num_coefficients': num_coeffs,
+                'sample_rate': sr,
+                'success': True,
+                'error': None
+            }
+
+        finally:
+            # Clean up temp file
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+
+    def _extract_spectralshape(self, audio_path):
+        """
+        Extract spectral shape descriptors using fluid-spectralshape.
+
+        Spectral shape descriptors include:
+        - Centroid, Spread, Skewness, Kurtosis
+        - Flatness, Rolloff, Slope
+
+        Args:
+            audio_path: Path to audio file
+
+        Returns:
+            Dictionary with spectral shape descriptors
+        """
+        import subprocess
+        import tempfile
+        import soundfile as sf
+        import os
+
+        # Create temporary output file for spectral shape data
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_output:
+            output_path = tmp_output.name
+
+        try:
+            # Run fluid-spectralshape CLI
+            cmd = [
+                self.tools['spectralshape'],
+                '-source', audio_path,
+                '-features', output_path,
+                '-fftsettings', str(self.DEFAULT_FFT_SIZE), str(self.DEFAULT_HOP_SIZE)
+            ]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+            # Read the spectral shape data from output file
+            # Output format: frames x 7 (centroid, spread, skewness, kurtosis, flatness, rolloff, slope)
+            spectral_data, sr = sf.read(output_path)
+
+            # Compute statistics across frames for each descriptor
+            descriptor_names = ['centroid', 'spread', 'skewness', 'kurtosis', 'flatness', 'rolloff', 'slope']
+            spectral_stats = {}
+
+            for i, name in enumerate(descriptor_names):
+                if spectral_data.shape[1] > i:
+                    col_data = spectral_data[:, i]
+                    spectral_stats[name] = {
+                        'mean': float(np.mean(col_data)),
+                        'std': float(np.std(col_data)),
+                        'min': float(np.min(col_data)),
+                        'max': float(np.max(col_data)),
+                    }
+
+            return {
+                'descriptors': spectral_stats,
+                'raw_data': spectral_data,
+                'sample_rate': sr,
+                'success': True,
+                'error': None
+            }
+
+        finally:
+            # Clean up temp file
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+
+    def _extract_loudness(self, audio_path):
+        """
+        Extract loudness (LUFS) using fluid-loudness.
+
+        Args:
+            audio_path: Path to audio file
+
+        Returns:
+            Dictionary with loudness descriptors
+        """
+        import subprocess
+        import tempfile
+        import soundfile as sf
+        import os
+
+        # Create temporary output file for loudness data
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_output:
+            output_path = tmp_output.name
+
+        try:
+            # Run fluid-loudness CLI
+            cmd = [
+                self.tools['loudness'],
+                '-source', audio_path,
+                '-features', output_path
+            ]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+            # Read the loudness data from output file
+            # Output format: frames x 2 (loudness, true_peak)
+            loudness_data, sr = sf.read(output_path)
+
+            # Extract loudness values
+            loudness_vals = loudness_data[:, 0] if len(loudness_data.shape) == 2 else loudness_data
+
+            # Compute statistics
+            loudness_stats = {
+                'mean': float(np.mean(loudness_vals)),
+                'std': float(np.std(loudness_vals)),
+                'min': float(np.min(loudness_vals)),
+                'max': float(np.max(loudness_vals)),
+            }
+
+            # True peak (second column)
+            if len(loudness_data.shape) == 2 and loudness_data.shape[1] > 1:
+                loudness_stats['true_peak'] = float(np.max(loudness_data[:, 1]))
+
+            return {
+                'loudness': loudness_stats,
+                'raw_data': loudness_vals,
+                'sample_rate': sr,
+                'success': True,
+                'error': None
+            }
+
+        finally:
+            # Clean up temp file
+            if os.path.exists(output_path):
+                os.unlink(output_path)
 
     def get_name(self):
         if self.flucoma_available:

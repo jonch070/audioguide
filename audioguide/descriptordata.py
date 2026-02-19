@@ -219,9 +219,9 @@ class descriptor_manager:
 		norm_coefficients = {}
 		
 		for desc_name, values in descriptor_values.items():
-			if len(values)				continue
+			if len(values) == 0:
+				continue
 			
- == 0:
 			values_array = np.array(values)
 			desc_min = np.min(values_array)
 			desc_max = np.max(values_array)

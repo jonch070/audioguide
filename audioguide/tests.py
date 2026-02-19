@@ -38,6 +38,13 @@ def testVariable(vtype, v):
 	from audioguide.userclasses import Score as score
 	from audioguide.userclasses import SearchPassOptionsEntry as spass
 	from audioguide.userclasses import SuperimpositionOptionsEntry as si
+	# Handle FLUCOMA_PRESET validation: must be a key in FLUCOMA_PRESETS or None
+	if vtype == 'a string in FLUCOMA_PRESETS.keys() or None':
+		if v is None: return True
+		if isinstance(v, str):
+			from audioguide.defaults import FLUCOMA_PRESETS
+			if v in FLUCOMA_PRESETS: return True
+		return False
 	if vtype == 'True or False':
 		if v == True or v == False: return True
 	elif vtype == 'None':

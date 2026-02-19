@@ -42,8 +42,14 @@ def testVariable(vtype, v):
 	if vtype == 'a string in FLUCOMA_PRESETS.keys() or None':
 		if v is None: return True
 		if isinstance(v, str):
-			from audioguide.defaults import FLUCOMA_PRESETS
-			if v in FLUCOMA_PRESETS: return True
+			# Import from flucoma_tools where presets are defined
+			from audioguide.flucoma_tools import resolve_preset
+			# Try to resolve - if it's a valid preset, it won't raise
+			try:
+				resolve_preset(v)
+				return True
+			except ValueError:
+				return False
 		return False
 	if vtype == 'True or False':
 		if v == True or v == False: return True

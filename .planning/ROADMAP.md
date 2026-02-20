@@ -89,7 +89,7 @@ This roadmap delivers three coherent phases that build on the existing spectral 
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 1 - FluCoMa | FluCoMa descriptor integration | 6 | In progress (1/3 plans) |
+| 1 - FluCoMa | FluCoMa descriptor integration | 6 | ✓ Complete |
 | 2 - Reaper | Enhanced Reaper output (TAKEENV) | 4 | Pending |
 | 3 - Usability | Usability improvements | 5 | Pending |
 

@@ -56,12 +56,12 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FLUC-01 | Phase 1 | Pending |
-| FLUC-02 | Phase 1 | Pending |
-| FLUC-03 | Phase 1 | Pending |
-| FLUC-04 | Phase 1 | Pending |
-| FLUC-05 | Phase 1 | Pending |
-| FLUC-06 | Phase 1 | Pending |
+| FLUC-01 | Phase 1 | Complete |
+| FLUC-02 | Phase 1 | Complete |
+| FLUC-03 | Phase 1 | Complete |
+| FLUC-04 | Phase 1 | Complete |
+| FLUC-05 | Phase 1 | Complete |
+| FLUC-06 | Phase 1 | Complete |
 | REAP-01 | Phase 2 | Pending |
 | REAP-02 | Phase 2 | Pending |
 | REAP-03 | Phase 2 | Pending |

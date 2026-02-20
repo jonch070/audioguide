@@ -135,6 +135,34 @@ SPECTRAL_POLYPHONIC_TOLERANCE_CENTS = 50  # Tolerance for grouping peaks into ha
 SPECTRAL_POLYPHONIC_MIN_HARMONICS = 3  # Minimum harmonics required to identify a voice
 SPECTRAL_POLYPHONIC_MAX_VOICES = 4  # Maximum simultaneous voices to detect
 
+###############  GRANULAR SYNTHESIS  ##############
+GRANULAR_ENABLE = False  # Enable granular synthesis mode for spectral reconstruction
+GRANULAR_GRAIN_SIZE_MS = 50.0  # Grain size in milliseconds (default 50ms)
+GRANULAR_OVERLAP = 0.5  # Overlap ratio 0-1 (default 0.5)
+GRANULAR_PITCH_VARIANCE = 0.0  # Pitch variance factor (semitones)
+GRANULAR_AMPLITUDE_VARIANCE = 0.1  # Amplitude variance factor (0-1)
+GRANULAR_POSITION_VARIANCE = 0.0  # Position variance within segment (0-1 ratio)
+GRANULAR_HOP_SIZE_MS = None  # Hop between grains (None = auto from grain_size and overlap)
+GRANULAR_ENVELOPE = 'hanning'  # Grain envelope type: 'hanning', 'cosine', 'rectangular'
+
+###############  PHASE-COHERENT SYNTHESIS  ##############
+PHASE_COHERENT = False  # Enable phase-coherent synthesis for smoother output
+PHASE_CORRECTION_METHOD = 'none'  # 'none', 'unwrap', 'predict'
+
+###############  MIDI OUTPUT  ##############
+MIDI_FILEPATH = None  # Output path for MIDI file (e.g., 'output.mid')
+MIDI_CHANNEL = 1  # MIDI channel 1-16
+MIDI_VELOCITY_SOURCE = 'target_loudness'  # 'target_loudness', 'corpus_velocity', 'fixed'
+MIDI_VELOCITY_FIXED = 100  # Fixed velocity when MIDI_VELOCITY_SOURCE='fixed'
+MIDI_TRANSPOSE_OCTAVES = 0  # Transpose in octaves
+MIDI_INSTRUMENT = None  # GM instrument name or program number
+
+###############  STOCHASTIC CORPUS SELECTION  ##############
+STOCHASTIC_SELECTION = False  # Enable stochastic corpus selection for natural variation
+STOCHASTIC_TEMPERATURE = 1.0  # Temperature for softmax (higher = more random)
+STOCHASTIC_TOP_K = 1  # Consider top K matches (1 = deterministic)
+STOCHASTIC_DIVERSITY_PENALTY = 0.0  # Penalize recently used corpus files (0-1)
+
 ###############  FLUCOMA DESCRIPTORS  ##############
 FLUCOMA_ENABLE = False  # Enable FluCoMa descriptor extraction
 FLUCOMA_DESCRIPTORS = ['mfcc', 'spectralshape', 'loudness', 'pitch']  # Descriptors to extract

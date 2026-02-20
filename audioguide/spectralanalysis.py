@@ -18,6 +18,7 @@ Key functions:
 """
 
 import numpy as np
+from typing import List, Tuple
 from scipy.signal import butter, filtfilt, hilbert, find_peaks
 
 # Try to import librosa for PYIN, but don't require it
@@ -553,3 +554,170 @@ def analyze_segment_spectrum(audio, sr, fmin=80, fmax=2000, n_harmonics=16):
         'harmonics': harmonics,
         'envelopes': envelopes
     }
+
+
+
+
+# ============== PHASE-COHERENT SYNTHESIS ==============
+
+def phase_unwrap(phase: np.ndarray) -> np.ndarray:
+    """
+    Unwrap FFT phase to remove discontinuities.
+    
+    This produces a continuous phase array that can be used
+    for phase-coherent synthesis.
+    
+    Args:
+        phase: Wrapped phase array (radians, -pi to pi)
+        
+    Returns:
+        Unwrapped phase array
+    """
+    return np.unwrap(phase)
+
+
+def phase_predict(phase: np.ndarray, new_indices: np.ndarray) -> np.ndarray:
+    """
+    Predict phase at new time positions.
+    
+    Uses linear prediction based on phase derivative (group delay).
+    
+    Args:
+        phase: Original phase array
+        new_indices: New sample indices to predict phase for
+        
+    Returns:
+        Predicted phase values at new positions
+    """
+    if len(phase) < 2:
+        return phase
+    
+    # Calculate phase difference (instantaneous frequency)
+    phase_diff = np.diff(phase)
+    
+    # Estimate average phase rate
+    avg_rate = np.mean(phase_diff)
+    
+    # Linear prediction
+    predicted = phase[0] + avg_rate * new_indices
+    
+    return predicted
+
+
+def phase_coherent_fft(audio: np.ndarray, method: str = 'unwrap') -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Perform FFT with phase coherence options.
+    
+    Args:
+        audio: Input audio signal
+        method: 'none', 'unwrap', or 'predict'
+        
+    Returns:
+        Tuple of (magnitude, phase, frequencies)
+    """
+    # Compute FFT
+    fft = np.fft.rfft(audio)
+    magnitude = np.abs(fft)
+    phase = np.angle(fft)
+    
+    # Apply phase correction
+    if method == 'unwrap':
+        phase = phase_unwrap(phase)
+    elif method == 'predict':
+        # Predict phase at each bin
+        n = len(phase)
+        new_indices = np.arange(n)
+        phase = phase_predict(phase, new_indices)
+    
+    # Compute frequency array
+    freqs = np.fft.rfftfreq(len(audio), 1.0 / len(audio))
+    
+    return magnitude, phase, freqs
+
+
+def phase_coherent_istft(magnitude: np.ndarray, phase: np.ndarray, 
+                        original_audio_length: int) -> np.ndarray:
+    """
+    Perform inverse STFT with custom phase.
+    
+    Args:
+        magnitude: Magnitude spectrum
+        phase: Phase spectrum (can be unwrapped)
+        original_audio_length: Length of output audio
+        
+    Returns:
+        Reconstructed audio signal
+    """
+    # Combine magnitude and phase
+    # If phase is unwrapped, we need to re-wrap it for complex reconstruction
+    if len(phase) > len(magnitude):
+        # Phase was unwrapped, re-wrap for ISTFT
+        phase = np.angle(np.exp(1j * phase[:len(magnitude)]))
+    elif len(phase) < len(magnitude):
+        # Pad phase if needed
+        phase_padded = np.zeros(len(magnitude))
+        phase_padded[:len(phase)] = phase
+        phase = phase_padded
+    
+    # Reconstruct complex spectrum
+    complex_spectrum = magnitude * np.exp(1j * phase)
+    
+    # Inverse FFT
+    audio = np.fft.irfft(complex_spectrum, n=original_audio_length)
+    
+    return audio
+
+
+def extract_spectral_peaks_with_phase(audio: np.ndarray, sr: int,
+                                      fmin: float = 80, fmax: float = 5000,
+                                      min_amplitude_ratio: float = 0.01,
+                                      max_peaks: int = 16) -> List[Tuple[float, float, float]]:
+    """
+    Extract spectral peaks with phase information.
+    
+    Args:
+        audio: Audio signal
+        sr: Sample rate
+        fmin: Minimum frequency
+        fmax: Maximum frequency
+        min_amplitude_ratio: Minimum peak amplitude relative to max
+        max_peaks: Maximum number of peaks
+        
+    Returns:
+        List of (frequency, amplitude, phase) tuples
+    """
+    # Compute FFT with unwrapped phase
+    magnitude, phase, freqs = phase_coherent_fft(audio, method='unwrap')
+    
+    # Filter to frequency range
+    freq_mask = (freqs >= fmin) & (freqs <= fmax)
+    freqs_filtered = freqs[freq_mask]
+    mag_filtered = magnitude[freq_mask]
+    phase_filtered = phase[freq_mask]
+    
+    if len(mag_filtered) == 0:
+        return []
+    
+    # Find local peaks
+    peaks, _ = find_peaks(mag_filtered, height=0)
+    
+    if len(peaks) == 0:
+        return []
+    
+    # Filter by amplitude threshold
+    max_magnitude = np.max(mag_filtered)
+    threshold = max_magnitude * min_amplitude_ratio
+    
+    significant_peaks = []
+    for peak_idx in peaks:
+        amp = mag_filtered[peak_idx]
+        if amp >= threshold:
+            freq = freqs_filtered[peak_idx]
+            ph = phase_filtered[peak_idx]
+            significant_peaks.append((freq, amp, ph))
+    
+    # Sort by amplitude and take top max_peaks
+    significant_peaks.sort(key=lambda x: x[1], reverse=True)
+    
+    return significant_peaks[:max_peaks]
+    

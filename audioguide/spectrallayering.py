@@ -379,6 +379,113 @@ def compute_gain_envelope(target_envelope, corpus_envelope, time_offset=0, durat
     return envelope_points
 
 
+
+# ============== STOCHASTIC CORPUS SELECTION ==============
+
+def softmax(x, temperature=1.0):
+    """
+    Apply softmax with temperature for probabilistic selection.
+    
+    Args:
+        x: Array of scores (higher = better)
+        temperature: Temperature parameter (higher = more random)
+        
+    Returns:
+        Probability distribution
+    """
+    x = np.array(x, dtype=np.float64)
+    x = x / max(temperature, 0.001)  # Prevent division by zero
+    
+    # Subtract max for numerical stability
+    x = x - np.max(x)
+    
+    exp_x = np.exp(x)
+    return exp_x / np.sum(exp_x)
+
+
+def stochastic_candidates(candidates: List[tuple], temperature: float = 1.0, 
+                          top_k: int = 1, diversity_penalty: float = 0.0,
+                          corpus_usage_tracker: dict = None) -> tuple:
+    """
+    Select a corpus candidate using stochastic (probabilistic) selection.
+    
+    Instead of always picking the best match, this adds natural variation
+    by sampling from a probability distribution over candidates.
+    
+    Args:
+        candidates: List of (segment, score) tuples, sorted by score (best first)
+        temperature: Temperature for softmax (1.0 = default, higher = more random)
+        top_k: Only consider top K candidates
+        diversity_penalty: Penalty for recently used files (0-1)
+        corpus_usage_tracker: Dict tracking corpus file usage times
+        
+    Returns:
+        Selected (segment, score) tuple
+    """
+    if not candidates:
+        return None
+    
+    # Limit to top K
+    candidates = candidates[:top_k]
+    
+    if len(candidates) == 1:
+        return candidates[0]
+    
+    # Extract scores
+    scores = np.array([c[1] for c in candidates])
+    
+    # Apply diversity penalty if tracker provided
+    if diversity_penalty > 0 and corpus_usage_tracker is not None:
+        penalties = []
+        for seg, _ in candidates:
+            filename = getattr(seg, 'filename', None)
+            if filename in corpus_usage_tracker:
+                last_use_time = corpus_usage_tracker[filename]
+                # Penalty based on how recently used
+                penalty = diversity_penalty * (1.0 / (1.0 + last_use_time))
+            else:
+                penalty = 0.0
+            penalties.append(penalty)
+        
+        scores = scores - np.array(penalties)
+    
+    # Convert to probabilities using softmax
+    probs = softmax(scores, temperature)
+    
+    # Sample
+    idx = np.random.choice(len(candidates), p=probs)
+    
+    return candidates[idx]
+
+
+def diversity_penalty_score(corpus_usage_tracker: dict, filename: str, 
+                           current_time: float, decay_rate: float = 0.5) -> float:
+    """
+    Calculate diversity penalty for a corpus file.
+    
+    Files used more recently get higher penalty.
+    
+    Args:
+        corpus_usage_tracker: Dict mapping filename to last use time
+        filename: Corpus file to check
+        current_time: Current time in score
+        decay_rate: How quickly penalty decays
+        
+    Returns:
+        Penalty score (higher = less likely to be selected)
+    """
+    if filename not in corpus_usage_tracker:
+        return 0.0
+    
+    last_use = corpus_usage_tracker[filename]
+    time_since_use = current_time - last_use
+    
+    # Exponential decay
+    penalty = np.exp(-decay_rate * time_since_use)
+    
+    return penalty
+
+
 def spectral_layering_match(target_segment, corpus_segments, AnalInterface,
                             tolerance_cents=50, max_partials=8, min_amplitude_ratio=0.01,
                             enable_polyphonic=False, polyphonic_tolerance_cents=50,
@@ -386,7 +493,9 @@ def spectral_layering_match(target_segment, corpus_segments, AnalInterface,
                             duration_tolerance_sec=None,
                             corpus_usage_tracker=None, no_repeat=False,
                             time_sparsity_sec=None, current_time_sec=0,
-                            key_aware=False, key_root='C', scale_type='major'):
+                            key_aware=False, key_root='C', scale_type='major',
+                            stochastic=False, stochastic_temperature=1.0,
+                            stochastic_top_k=1, stochastic_diversity_penalty=0.0):
     """
     Match corpus sounds to target segment's harmonic partials.
 

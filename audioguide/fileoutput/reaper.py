@@ -16,8 +16,8 @@ def format_takeenv(gain_envelope, item_position):
 	Format TAKEENV chunk with automation points.
 
 	Args:
-		gain_envelope: List of (time, gain_db) tuples
-		item_position: Item start position in project timeline
+		gain_envelope: List of (time, gain_db) tuples - absolute timeline times
+		item_position: Item start position in project timeline (used to convert to relative)
 
 	Returns:
 		Formatted TAKEENV string
@@ -35,12 +35,17 @@ def format_takeenv(gain_envelope, item_position):
 	takeenv_str += "        DEFSHAPE 0 -1 -1\n"  # Default shape
 
 	# Add automation points
+	# Convert absolute times to relative times (relative to item start)
 	for time_sec, gain_db in gain_envelope:
+		# Convert absolute time to relative time within the take
+		relative_time = time_sec - item_position
+		# Ensure non-negative (points can't be before item start)
+		relative_time = max(0.0, relative_time)
 		# Convert gain to linear (1.0 = 0dB)
 		linear_value = db_to_linear(gain_db)
-		# PT format: PT absolute_time linear_value shape
+		# PT format: PT relative_time linear_value shape
 		# Shape 0 = linear interpolation
-		takeenv_str += "        PT %.6f %.6f 0\n" % (time_sec, linear_value)
+		takeenv_str += "        PT %.6f %.6f 0\n" % (relative_time, linear_value)
 
 	takeenv_str += "      >\n"
 	return takeenv_str
@@ -105,18 +110,28 @@ class output:
 
 				# Check if we have clip gain envelope automation
 				has_envelope = 'gain_envelope' in d and d['gain_envelope'] and len(d['gain_envelope']) > 0
+				
+				# Generate TAKEENV string if envelope exists
+				takeenv_str = ""
+				if has_envelope:
+					# time_sec relative to item start, but TAKEENV needs absolute position
+					# Pass item position as offset so points are relative to item
+					takeenv_str = format_takeenv(d['gain_envelope'], d['time'])
 
 				# Calculate final volume (ampscale * static gain if present)
 				final_volume = d['ampscale']
-				if has_envelope and not enable_volumeenv:
+				if has_envelope and not enable_volumeenv and not takeenv_str:
 					# Extract static gain from first envelope point and multiply into VOLPAN
-					# (only when VOLUMEENV is disabled, to avoid double-gain)
+					# (only when VOLUMEENV is disabled and TAKEENV is not being written)
 					_, gain_db = d['gain_envelope'][0]
 					gain_linear = db_to_linear(gain_db)
 					final_volume = d['ampscale'] * gain_linear
 
 				# Use VOLPAN for clip gain (compatible with all Reaper versions)
-				track_str += '''     <ITEM
+				# Wrap SOURCE in TAKE if we have TAKEENV, otherwise use direct SOURCE
+				if takeenv_str:
+					# TAKEENV requires TAKE wrapper
+					track_str += '''     <ITEM
       POSITION  %f
       NAME "%s"
       LENGTH %f
@@ -124,7 +139,25 @@ class output:
       VOLPAN %f 0.0 1.0 -1.0
       FADEIN 1 %f 0.0
       FADEOUT 1 %f 0.0
-      %s      <SOURCE WAVE
+      %s      <TAKE>
+        <SOURCE WAVE>
+          FILE "%s"
+        >
+%s      >
+     >
+''' % (d['time'], d['name'], d['orig_duration'], d['skip'], final_volume,
+       d['fadein'], d['fadeout'], playrate_str, d['file'], takeenv_str)
+				else:
+					# Standard format without TAKE (no TAKEENV)
+					track_str += '''     <ITEM
+      POSITION  %f
+      NAME "%s"
+      LENGTH %f
+      SOFFS %f
+      VOLPAN %f 0.0 1.0 -1.0
+      FADEIN 1 %f 0.0
+      FADEOUT 1 %f 0.0
+      %s      <SOURCE WAVE>
         FILE "%s"
       >
      >

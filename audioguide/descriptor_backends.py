@@ -114,6 +114,19 @@ class FluCoMaBackend(DescriptorBackend):
         self.flucoma_available = False
         self.fallback_backend = None
 
+        # Check if caching is enabled
+        try:
+            from audioguide import defaults
+            self.cache_enabled = getattr(defaults, 'FLUCOMA_CACHE_CORPUS', True)
+        except:
+            self.cache_enabled = True
+
+        # Cache directory for FluCoMa descriptors
+        if self.cache_enabled:
+            import os
+            self.cache_dir = os.path.join('.audioguide', 'cache', 'flucoma')
+            os.makedirs(self.cache_dir, exist_ok=True)
+
         # Check availability of all FluCoMa CLI tools
         import shutil
         self.tools = {
@@ -182,6 +195,14 @@ class FluCoMaBackend(DescriptorBackend):
         if not self.flucoma_available:
             return self.fallback_backend.analyze_file(audio_path)
 
+        # Check cache first (if enabled)
+        if self.cache_enabled:
+            cached_result = self._load_from_cache(audio_path, descriptors)
+            if cached_result is not None:
+                if self.verbose:
+                    print(f"FluCoMa: Using cached descriptors for {audio_path}")
+                return cached_result
+
         result = {
             'f0': 0.0,
             'success': True,
@@ -205,6 +226,10 @@ class FluCoMaBackend(DescriptorBackend):
                     if self.verbose:
                         print(f"WARNING: Unknown descriptor type '{desc_type}'")
 
+            # Save to cache after successful extraction
+            if self.cache_enabled:
+                self._save_to_cache(audio_path, descriptors, result)
+
             return result
 
         except Exception as e:
@@ -222,6 +247,47 @@ class FluCoMaBackend(DescriptorBackend):
                 'success': False,
                 'error': str(e)
             }
+
+    def _get_cache_key(self, audio_path, descriptors):
+        """Generate a cache key based on file path and descriptors."""
+        import hashlib
+        import os
+        
+        # Use file path + modification time + descriptors as cache key
+        stat = os.stat(audio_path)
+        key_data = f"{audio_path}:{stat.st_mtime}:{stat.st_size}:{','.join(sorted(descriptors))}"
+        return hashlib.md5(key_data.encode()).hexdigest()
+
+    def _load_from_cache(self, audio_path, descriptors):
+        """Load descriptors from cache if available and not expired."""
+        import os
+        import pickle
+
+        cache_key = self._get_cache_key(audio_path, descriptors)
+        cache_file = os.path.join(self.cache_dir, f"{cache_key}.pkl")
+
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'rb') as f:
+                    return pickle.load(f)
+            except:
+                pass  # Cache corrupted, will recompute
+        return None
+
+    def _save_to_cache(self, audio_path, descriptors, result):
+        """Save descriptors to cache."""
+        import os
+        import pickle
+
+        cache_key = self._get_cache_key(audio_path, descriptors)
+        cache_file = os.path.join(self.cache_dir, f"{cache_key}.pkl")
+
+        try:
+            with open(cache_file, 'wb') as f:
+                pickle.dump(result, f)
+        except Exception as e:
+            if self.verbose:
+                print(f"WARNING: Failed to save cache for {audio_path}: {e}")
 
     def _extract_pitch(self, audio_path):
         """

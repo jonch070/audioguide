@@ -8,7 +8,7 @@
 
 **Core Value:** Enable musicians to reconstruct sounds using corpus-based synthesis with minimal friction — whether through spectral partial matching, advanced descriptors, or simplified configuration.
 
-**Current Focus:** Phase 1 - FluCoMa Descriptor Infrastructure
+**Current Focus:** Phase 2 - Reaper TAKEENV
 
 ---
 
@@ -16,15 +16,15 @@
 
 | Attribute | Value |
 |-----------|-------|
-| Phase | 1 of 3 (FluCoMa Descriptors) |
-| Plan | 3 of 3 in phase |
-| Status | Phase complete |
-| Progress | ███░░░░░░ 100% |
+| Phase | 2 of 3 (Reaper TAKEENV) |
+| Plan | 2 of 3 in phase |
+| Status | In progress |
+| Progress | ██░░░░░░ 67% |
 
 **Phase Progress:**
 
 - Phase 1 (FluCoMa): Complete (3/3 plans)
-- Phase 2 (Reaper): Not started  
+- Phase 2 (Reaper): In progress (2/3 plans)
 - Phase 3 (Usability): Not started
 
 ---
@@ -68,6 +68,18 @@
 - Full pipeline validated from config to descriptor extraction
 - Human verification checkpoint passed
 
+**Plan 02-01 completed:**
+- TAKEENV_PER_ITEM_GAIN config option added
+- format_takeenv() now called in reaper.py write method
+- TAKE wrapper structure added for TAKEENV (required by Reaper)
+- Per-item gain flows from config to takeenv_processor
+
+**Plan 02-02 completed:**
+- TAKEENV_ASR_ATTACK, TAKEENV_ASR_SUSTAIN, TAKEENV_ASR_RELEASE config options added
+- ASR envelope generation implemented in takeenv_processor
+- 4-point envelope: silence->sustain->silence pattern
+- ASR values wired from config to processor
+
 **Research completed:**
 - STACK.md - Python audio stack verification
 - FEATURES.md - Feature requirements documented
@@ -85,10 +97,10 @@
 ## Session Continuity
 
 **Last session:** 2026-02-19
-**Stopped at:** Completed 01-03-SUMMARY.md (FLUCOMA option validation)
+**Stopped at:** Completed 02-02-SUMMARY.md (ASR envelope configuration)
 **Resume file:** None
 
-**Next action:** Ready for Phase 2 (Reaper VOLENV/TAKEENV features)
+**Next action:** Ready for Plan 02-03 (track/item volume independence + verification)
 
 ---
 

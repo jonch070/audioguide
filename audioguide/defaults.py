@@ -181,6 +181,34 @@ BATCH_PATTERN = '*.wav'  # File pattern to match
 BATCH_CONTINUE_ON_ERROR = True  # Continue processing if one file fails
 BATCH_SUMMARY_FILE = 'batch_summary.json'  # Summary JSON file path
 
+###############  MACHINE LEARNING TIMBRE MATCHING  ##############
+ML_ENABLE = False  # Enable ML-based timbre matching
+ML_MODEL_PATH = None  # Path to trained model file (.pt/.pth)
+ML_TRAIN_ON_CORPUS = False  # Train model on corpus before matching
+ML_MODEL_TYPE = 'simple_nn'  # 'simple_nn', 'autoencoder', 'contrastive'
+ML_EMBEDDING_DIM = 128  # Dimension of timbre embedding
+ML_HIDDEN_DIM = 256  # Hidden layer dimension
+ML_EPOCHS = 100  # Training epochs
+ML_BATCH_SIZE = 32  # Training batch size
+ML_LEARNING_RATE = 0.001  # Learning rate
+
+###############  STYLE TRANSFER  ##############
+STYLE_TRANSFER_ENABLE = False  # Enable style transfer mode
+STYLE_STRENGTH = 1.0  # Style transfer strength (0-1)
+
+###############  REAL-TIME PROCESSING  ##############
+REALTIME_ENABLE = False  # Enable real-time processing mode
+REALTIME_BUFFER_SIZE = 512  # Audio buffer size in samples
+REALTIME_HOP_SIZE = 256  # Processing hop size
+REALTIME_LATENCY_TARGET_MS = 20  # Target latency in milliseconds
+REALTIME_INPUT_DEVICE = None  # Audio input device index (None = default)
+REALTIME_OUTPUT_DEVICE = None  # Audio output device index (None = default)
+REALTIME_USE_JACK = False  # Use JACK audio instead of PortAudio
+
+###############  MIDI CONTROLLER  ##############
+MIDI_CONTROL_ENABLE = False  # Enable MIDI controller input
+MIDI_CONTROLLER_MAPPING = {}  # MIDI CC to parameter mapping
+
 ###############  FLUCOMA DESCRIPTORS  ##############
 FLUCOMA_ENABLE = False  # Enable FluCoMa descriptor extraction
 FLUCOMA_DESCRIPTORS = ['mfcc', 'spectralshape', 'loudness', 'pitch']  # Descriptors to extract

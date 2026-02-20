@@ -718,7 +718,7 @@ spass('closest', d('X', norm=1), d('Y', norm=1))
 					release=self.ops.TAKEENV_ASR_RELEASE
 				)
 			this_rpp.add_tracks(corpus_tracks)
-			this_rpp.write(self.ops.RPP_AUTOLAUNCH, playrate_change_duration=self.ops.RPP_TRANS_AFFECTS_SPEED, enable_volumeenv=self.ops.ENABLE_SPECTRAL_VOLUMEENV)
+			this_rpp.write(self.ops.RPP_AUTOLAUNCH, playrate_change_duration=self.ops.RPP_TRANS_AFFECTS_SPEED, enable_volumeenv=self.ops.ENABLE_SPECTRAL_VOLUMEENV, enable_takeenv=self.ops.ENABLE_TAKEENV)
 			dict_of_files_written['RPP_FILEPATH'] = self.ops.get_outputfile('RPP_FILEPATH')
 			self.p.log( "Wrote rpp file %s\n"%self.ops.get_outputfile('RPP_FILEPATH') )
 

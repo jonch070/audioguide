@@ -61,6 +61,12 @@ This roadmap delivers three coherent phases that build on the existing spectral 
 
 4. **Track vs Item Volume Separate** — Adjusting track volume does not affect item volume and vice versa
 
+**Plans:**
+
+- [ ] 02-01-PLAN.md — Enable TAKEENV writing + per-item gain config
+- [ ] 02-02-PLAN.md — ASR envelope point configuration
+- [ ] 02-03-PLAN.md — Track/item volume independence + verification
+
 ---
 
 ## Phase 3: Usability Improvements

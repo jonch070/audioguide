@@ -89,6 +89,11 @@ This roadmap delivers three coherent phases that build on the existing spectral 
 
 5. **Config Validation Works** — User can run validation before execution and see all issues listed
 
+**Plans:**
+
+- [ ] 03-01-PLAN.md — Templates, JSON config save/load, validation (foundation)
+- [ ] 03-02-PLAN.md — Headless CLI mode, error message improvements
+
 ---
 
 ## Progress

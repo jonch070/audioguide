@@ -91,7 +91,7 @@ class output:
 	def add_tracks(self, tracks):
 		self.tracks.extend(tracks)
 	###########################################
-	def write(self, autolaunchbool, verbose=True, rpp_header='REAPER_PROJECT 0.1 "6.11/x64" 1591355987', playrate_change_duration=True, playrate_preset=-1, enable_volumeenv=False):
+	def write(self, autolaunchbool, verbose=True, rpp_header='REAPER_PROJECT 0.1 "6.11/x64" 1591355987', playrate_change_duration=True, playrate_preset=-1, enable_volumeenv=False, enable_takeenv=False):
 		'''write and close the rpp file
 		according to https://github.com/ReaTeam/Doc/blob/master/State%20Chunk%20Definitions
 
@@ -111,16 +111,16 @@ class output:
 				# Check if we have clip gain envelope automation
 				has_envelope = 'gain_envelope' in d and d['gain_envelope'] and len(d['gain_envelope']) > 0
 				
-				# Generate TAKEENV string if envelope exists
+				# Generate TAKEENV string if envelope exists AND takeenv is enabled
 				takeenv_str = ""
-				if has_envelope:
+				if has_envelope and enable_takeenv:
 					# time_sec relative to item start, but TAKEENV needs absolute position
 					# Pass item position as offset so points are relative to item
 					takeenv_str = format_takeenv(d['gain_envelope'], d['time'])
 
 				# Calculate final volume (ampscale * static gain if present)
 				final_volume = d['ampscale']
-				if has_envelope and not enable_volumeenv and not takeenv_str:
+				if has_envelope and not enable_volumeenv and not enable_takeenv:
 					# Extract static gain from first envelope point and multiply into VOLPAN
 					# (only when VOLUMEENV is disabled and TAKEENV is not being written)
 					_, gain_db = d['gain_envelope'][0]

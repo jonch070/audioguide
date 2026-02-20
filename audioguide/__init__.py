@@ -712,7 +712,10 @@ spass('closest', d('X', norm=1), d('Y', norm=1))
 					corpus_tracks,
 					enable_takeenv=True,
 					static_gain_db=gain_db,
-					dynamic=False
+					dynamic=False,
+					attack=self.ops.TAKEENV_ASR_ATTACK,
+					sustain=self.ops.TAKEENV_ASR_SUSTAIN,
+					release=self.ops.TAKEENV_ASR_RELEASE
 				)
 			this_rpp.add_tracks(corpus_tracks)
 			this_rpp.write(self.ops.RPP_AUTOLAUNCH, playrate_change_duration=self.ops.RPP_TRANS_AFFECTS_SPEED, enable_volumeenv=self.ops.ENABLE_SPECTRAL_VOLUMEENV)

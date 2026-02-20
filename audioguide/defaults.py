@@ -84,6 +84,7 @@ RPP_AUTOLAUNCH = False
 # TAKEENV clip gain automation
 ENABLE_TAKEENV = False  # Enable clip gain automation (TAKEENV)
 TAKEENV_STATIC_GAIN = 0.0  # Static gain offset in dB (per layer)
+TAKEENV_PER_ITEM_GAIN = 0.0  # Per-item gain offset in dB (alternative to static gain)
 
 ################  DESCRIPTOR COMPUTATION SETTINGS  ################
 DESCRIPTOR_DATABASE_SIZE_LIMIT = 1

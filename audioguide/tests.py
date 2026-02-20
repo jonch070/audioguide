@@ -185,6 +185,7 @@ UserVar_types = {
 'RPP_AUTOLAUNCH': ['True or False'],
 'ENABLE_TAKEENV': ['True or False'],
 'TAKEENV_STATIC_GAIN': ['a number'],
+'TAKEENV_PER_ITEM_GAIN': ['a number'],
 
 
 #################  DESCRIPTOR COMPUTATION SETTINGS  ################
@@ -324,6 +325,7 @@ OptionChangeToProgramRun = {
 "RPP_AUTOLAUNCH": "output",
 "ENABLE_TAKEENV": "output",
 "TAKEENV_STATIC_GAIN": "output",
+"TAKEENV_PER_ITEM_GAIN": "output",
 
 "DESCRIPTOR_DATABASE_SIZE_LIMIT": "concate",
 "DESCRIPTOR_DATABASE_AGE_LIMIT": "concate",

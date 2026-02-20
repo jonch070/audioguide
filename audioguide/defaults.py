@@ -1,3 +1,11 @@
+# Import userclasses needed for default values
+from audioguide.userclasses import SuperimpositionOptionsEntry as si
+from audioguide.userclasses import TargetOptionsEntry as tsf
+from audioguide.userclasses import CorpusOptionsEntry as csf
+from audioguide.userclasses import SearchPassOptionsEntry as spass
+from audioguide.userclasses import Score as score
+from audioguide.userclasses import Instrument as instr
+
 ##############  OUTPUT FILES  #############
 OUTPUT_FILE_PREFIX = '' # a string
 CSOUND_CSD_FILEPATH = 'output/output.csd'
@@ -117,6 +125,10 @@ SPECTRAL_TOLERANCE_CENTS = 50  # Frequency matching tolerance in cents
 SPECTRAL_MAX_PARTIALS = 8  # Maximum harmonics to match per target segment
 SPECTRAL_MIN_AMPLITUDE_RATIO = 0.01  # Minimum partial amplitude (relative to max)
 ENABLE_SPECTRAL_VOLUMEENV = False  # Write time-varying volume automation for spectral partials
+# Adaptive partial limits - auto-adjust based on spectral density
+SPECTRAL_ADAPTIVE_PARTIALS = False  # Auto-adjust partial count based on spectral complexity
+SPECTRAL_MIN_PARTIALS = 2  # Minimum partials when adaptive mode is enabled
+SPECTRAL_COMPLEXITY_THRESHOLD = 0.3  # Spectral complexity ratio for auto-adjusting (0-1)
 # Polyphonic analysis options
 SPECTRAL_POLYPHONIC = False  # Enable polyphonic harmonic grouping (detect multiple simultaneous voices)
 SPECTRAL_POLYPHONIC_TOLERANCE_CENTS = 50  # Tolerance for grouping peaks into harmonic series

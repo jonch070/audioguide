@@ -48,9 +48,65 @@ def exit(*args):
 	sys.exit(1)
 
 
-def error(errorType, errorData, exitcode=1):
-	print(ladytext("%s ERROR: %s"%(bold(errorType.upper()), errorData)))
+# Error suggestions mapping - common errors to fix suggestions
+ERROR_SUGGESTIONS = {
+    "must be a tsf() object": "Create with: TARGET = tsf('path/to/audio.wav', thresh=-40)",
+    "must be a csf() object": "Create with: CORPUS = [csf('path/to/corpus/dir')]",
+    "must be a list of csf() objects": "Create with: CORPUS = [csf('path/to/dir1'), csf('path/to/dir2')]",
+    "must be a si() object": "Create with: SUPERIMPOSE = si()",
+    "must be a number": "Remove quotes around the value (e.g., use True/False not 'True'/'False')",
+    "must be a string": "Add quotes around the value (e.g., 'output.wav')",
+    "must be a positive integer": "Use a whole number greater than 0",
+    "must be a number greater than zero": "Use a positive number",
+    "file not found": "Check the file path is correct and the file exists",
+    "no segments found": "Check target file is not silent, adjust thresh parameter lower (e.g., -60)",
+    "cannot find corpus": "Ensure corpus directory contains valid audio files",
+    "invalid JSON": "Check for missing quotes, commas, or brackets",
+    "directory not found": "Check the path is correct",
+}
+
+
+def error(errorType, errorData, exitcode=1, suggestion=None):
+	"""Print error message and exit.
+	
+	Args:
+		errorType: Type of error (e.g., 'CONFIG', 'FILE')
+		errorData: Error message
+		exitcode: Exit code (default 1)
+		suggestion: Optional suggestion for fixing the error
+	"""
+	# Look up suggestion if not provided
+	if suggestion is None:
+		for pattern, fix in ERROR_SUGGESTIONS.items():
+			if pattern.lower() in str(errorData).lower():
+				suggestion = fix
+				break
+	
+	# Format message
+	msg = "%s ERROR: %s" % (bold(errorType.upper()), errorData)
+	if suggestion:
+		msg += "\n  Suggestion: %s" % suggestion
+	
+	print(ladytext(msg))
 	exit(exitcode)
+
+
+def config_error(field, message, suggestion=None):
+	"""Print configuration-specific error with suggestion.
+	
+	Args:
+		field: Config field name
+		message: Error message
+		suggestion: Optional suggestion for fixing
+	"""
+	# Look up suggestion
+	if suggestion is None:
+		for pattern, fix in ERROR_SUGGESTIONS.items():
+			if pattern.lower() in message.lower():
+				suggestion = fix
+				break
+	
+	error("CONFIG", f"{field}: {message}", suggestion=suggestion)
 
 
 

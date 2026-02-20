@@ -281,6 +281,124 @@ def extract_all_spectral_peaks(audio, sr, fmin=80, fmax=5000, min_amplitude_rati
     return significant_peaks[:max_peaks]
 
 
+def compute_spectral_complexity(audio, sr, fmin=80, fmax=5000):
+    """
+    Compute spectral complexity metric (0-1) based on spectral peak distribution.
+    
+    Higher values indicate more complex spectra (polyphonic, dissonant, etc.)
+    Lower values indicate simpler spectra (single notes, harmonic series)
+    
+    Args:
+        audio: Audio signal
+        sr: Sample rate
+        fmin: Minimum frequency to consider
+        fmax: Maximum frequency to consider
+    
+    Returns:
+        Complexity score between 0 (simple) and 1 (complex)
+    """
+    # Compute FFT
+    fft = np.fft.rfft(audio)
+    freqs = np.fft.rfftfreq(len(audio), 1/sr)
+    magnitude = np.abs(fft)
+    
+    # Filter to frequency range
+    freq_mask = (freqs >= fmin) & (freqs <= fmax)
+    freqs_filtered = freqs[freq_mask]
+    mag_filtered = magnitude[freq_mask]
+    
+    if len(mag_filtered) == 0:
+        return 0.5  # Default to medium complexity
+    
+    # Normalize magnitudes
+    mag_normalized = mag_filtered / np.max(mag_filtered)
+    
+    # Find significant peaks
+    peaks, _ = find_peaks(mag_filtered, height=0)
+    
+    if len(peaks) < 2:
+        return 0.1  # Very simple - single prominent frequency
+    
+    # Calculate metrics:
+    # 1. Number of peaks relative to frequency span
+    peak_density = len(peaks) / len(freqs_filtered) * 1000
+    
+    # 2. Distribution entropy - how spread out the energy is
+    # Lower entropy = energy concentrated in few peaks
+    # Higher entropy = energy spread across many frequencies
+    hist, _ = np.histogram(mag_normalized, bins=10, range=(0, 1))
+    hist = hist / np.sum(hist)  # Normalize
+    hist = hist[hist > 0]  # Remove zeros for log
+    entropy = -np.sum(hist * np.log2(hist))
+    max_entropy = np.log2(10)  # Maximum possible entropy for 10 bins
+    entropy_normalized = entropy / max_entropy
+    
+    # 3. Peak spacing - are peaks harmonically related or random?
+    peak_freqs = freqs_filtered[peaks]
+    if len(peak_freqs) > 1:
+        # Check for harmonic relationships (peaks at integer ratios)
+        # If peaks are at harmonic ratios, lower complexity
+        harmonic_count = 0
+        for i, f1 in enumerate(peak_freqs):
+            for f2 in peak_freqs[i+1:]:
+                if f1 > 0:
+                    ratio = f2 / f1
+                    # Check if close to integer (harmonic)
+                    nearest_int = round(ratio)
+                    if abs(ratio - nearest_int) < 0.1:
+                        harmonic_count += 1
+        harmonic_ratio = harmonic_count / max(1, len(peaks) * (len(peaks) - 1) / 2)
+    else:
+        harmonic_ratio = 1.0
+    
+    # Combined complexity metric
+    # More peaks + higher entropy + less harmonic = more complex
+    complexity = (peak_density * 0.3 + entropy_normalized * 0.4 + (1 - harmonic_ratio) * 0.3)
+    
+    # Clamp to 0-1 range
+    return min(1.0, max(0.0, complexity))
+
+
+def adapt_partial_count(audio, sr, base_max=8, min_partials=2, max_partials=32, 
+                        complexity_threshold=0.3, fmin=80, fmax=5000):
+    """
+    Adaptively determine optimal number of partials based on spectral complexity.
+    
+    For simple spectra (single notes), fewer partials are needed.
+    For complex spectra (chords, polyphony), more partials are needed.
+    
+    Args:
+        audio: Audio signal
+        sr: Sample rate
+        base_max: Base maximum partials (used as reference)
+        min_partials: Minimum partials to use
+        max_partials: Maximum partials to use
+        complexity_threshold: Threshold for complexity scaling (0-1)
+        fmin: Minimum frequency for analysis
+        fmax: Maximum frequency for analysis
+    
+    Returns:
+        Recommended number of partials
+    """
+    complexity = compute_spectral_complexity(audio, sr, fmin, fmax)
+    
+    # Scale partials based on complexity
+    # complexity 0 -> use base_max
+    # complexity 1 -> use max_partials
+    # complexity near threshold -> use base_max
+    
+    if complexity < complexity_threshold:
+        # Simple spectrum - use base or fewer
+        partials = base_max
+    else:
+        # Complex spectrum - scale up
+        scale = (complexity - complexity_threshold) / (1.0 - complexity_threshold)
+        partials = int(base_max + scale * (max_partials - base_max))
+    
+    # Clamp to bounds
+    return max(min_partials, min(max_partials, partials))
+
+
 def group_peaks_into_harmonic_series(peaks, tolerance_cents=50, min_harmonics=3, max_voices=8):
     """
     Group spectral peaks into harmonic series to identify individual notes/voices.

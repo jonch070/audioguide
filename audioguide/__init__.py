@@ -877,3 +877,39 @@ spass('closest', d('X', norm=1), d('Y', norm=1))
 			csd.playFile( self.ops.get_outputfile('CSOUND_RENDER_FILEPATH') )
 
 		return dict_of_files_written
+
+
+def concatenate(config_dict=None):
+	"""
+	Main entry point for AudioGuide synthesis.
+	
+	Args:
+		config_dict: Optional configuration dictionary. If None, uses defaults.
+	
+	Returns:
+		Dict of output files written
+	"""
+	if config_dict is None:
+		# Use defaults - create instance and run
+		m = main()
+		m.run()
+		return {}
+	
+	# Apply config and run
+	m = main()
+	m.parse_options_dict(config_dict)
+	return m.run()
+
+
+# CLI entry point
+if __name__ == '__main__':
+	# Check if running as CLI
+	import sys
+	if len(sys.argv) > 1 and not sys.argv[0].endswith('__init__'):
+		# Try to run as CLI
+		from audioguide import cli
+		sys.exit(cli.main())
+	else:
+		# Run in interactive mode
+		m = main()
+		m.run()

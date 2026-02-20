@@ -1,6 +1,6 @@
 # STATE: AudioGuide Improvements
 
-**Last Updated:** 2026-02-19
+**Last Updated:** 2026-02-20
 
 ---
 
@@ -8,7 +8,7 @@
 
 **Core Value:** Enable musicians to reconstruct sounds using corpus-based synthesis with minimal friction — whether through spectral partial matching, advanced descriptors, or simplified configuration.
 
-**Current Focus:** Phase 2 - Reaper TAKEENV
+**Current Focus:** Phase 2 - Reaper TAKEENV (Complete!)
 
 ---
 
@@ -17,14 +17,14 @@
 | Attribute | Value |
 |-----------|-------|
 | Phase | 2 of 3 (Reaper TAKEENV) |
-| Plan | 2 of 3 in phase |
-| Status | In progress |
-| Progress | ██░░░░░░ 67% |
+| Plan | 3 of 3 in phase |
+| Status | Phase complete |
+| Progress | ███░░░░░ 100% |
 
 **Phase Progress:**
 
 - Phase 1 (FluCoMa): Complete (3/3 plans)
-- Phase 2 (Reaper): In progress (2/3 plans)
+- Phase 2 (Reaper): Complete (3/3 plans)
 - Phase 3 (Usability): Not started
 
 ---
@@ -80,6 +80,12 @@
 - 4-point envelope: silence->sustain->silence pattern
 - ASR values wired from config to processor
 
+**Plan 02-03 completed:**
+- Added enable_takeenv parameter to write() method for explicit control
+- Fixed bug: TAKEENV now only generated when explicitly enabled (enable_takeenv=True)
+- Prevented double-gain: VOLPAN stays at 1.0 when automation is active
+- Created end-to-end test validating VOLENV/TAKEENV independence in all 4 modes
+
 **Research completed:**
 - STACK.md - Python audio stack verification
 - FEATURES.md - Feature requirements documented
@@ -96,12 +102,12 @@
 
 ## Session Continuity
 
-**Last session:** 2026-02-19
-**Stopped at:** Completed 02-02-SUMMARY.md (ASR envelope configuration)
+**Last session:** 2026-02-20
+**Stopped at:** Completed 02-03-SUMMARY.md (VOLENV/TAKEENV independence)
 **Resume file:** None
 
-**Next action:** Ready for Plan 02-03 (track/item volume independence + verification)
+**Next action:** Phase 2 complete! Ready for Phase 3 (Usability)
 
 ---
 
-*State updated: 2026-02-19*
+*State updated: 2026-02-20*

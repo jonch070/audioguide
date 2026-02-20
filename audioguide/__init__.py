@@ -706,10 +706,12 @@ spass('closest', d('X', norm=1), d('Y', norm=1))
 			corpus_tracks = concatenativeclasses.sortOutputEventsIntoTracks(self.outputEvents, self.ops.RPP_CPSTRACK_METHOD, self.cps.data['vcToCorpusName'], transpositionAffectsPlayspeed=self.ops.RPP_TRANS_AFFECTS_SPEED)
 			# Process for TAKEENV if enabled
 			if self.ops.ENABLE_TAKEENV:
+				# Use PER_ITEM_GAIN if set (non-zero), otherwise fall back to STATIC_GAIN
+				gain_db = self.ops.TAKEENV_PER_ITEM_GAIN if self.ops.TAKEENV_PER_ITEM_GAIN != 0.0 else self.ops.TAKEENV_STATIC_GAIN
 				corpus_tracks = takeenv_processor.process_tracks_for_takeenv(
 					corpus_tracks,
 					enable_takeenv=True,
-					static_gain_db=self.ops.TAKEENV_STATIC_GAIN,
+					static_gain_db=gain_db,
 					dynamic=False
 				)
 			this_rpp.add_tracks(corpus_tracks)

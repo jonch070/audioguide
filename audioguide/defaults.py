@@ -163,6 +163,24 @@ STOCHASTIC_TEMPERATURE = 1.0  # Temperature for softmax (higher = more random)
 STOCHASTIC_TOP_K = 1  # Consider top K matches (1 = deterministic)
 STOCHASTIC_DIVERSITY_PENALTY = 0.0  # Penalize recently used corpus files (0-1)
 
+###############  PERFORMANCE & PARALLEL PROCESSING  ##############
+PARALLEL_DESCRIPTORS = False  # Enable parallel descriptor calculation
+PARALLEL_NUM_WORKERS = None  # Number of workers (None = CPU count)
+
+###############  CACHING SYSTEM  ##############
+CACHE_DESCRIPTORS = True  # Enable descriptor caching
+CACHE_DIR = '.audioguide_cache'  # Cache directory path
+CACHE_MAX_SIZE_GB = 10.0  # Maximum cache size in GB
+CACHE_TTL_DAYS = 30  # Cache time-to-live in days
+
+###############  BATCH PROCESSING  ##############
+BATCH_ENABLE = False  # Enable batch processing mode
+BATCH_INPUT_DIR = None  # Input directory for batch processing
+BATCH_OUTPUT_DIR = None  # Output directory for batch results
+BATCH_PATTERN = '*.wav'  # File pattern to match
+BATCH_CONTINUE_ON_ERROR = True  # Continue processing if one file fails
+BATCH_SUMMARY_FILE = 'batch_summary.json'  # Summary JSON file path
+
 ###############  FLUCOMA DESCRIPTORS  ##############
 FLUCOMA_ENABLE = False  # Enable FluCoMa descriptor extraction
 FLUCOMA_DESCRIPTORS = ['mfcc', 'spectralshape', 'loudness', 'pitch']  # Descriptors to extract

@@ -889,16 +889,28 @@ def concatenate(config_dict=None):
 	Returns:
 		Dict of output files written
 	"""
+	import sys
+	
 	if config_dict is None:
 		# Use defaults - create instance and run
+		# Set headless-friendly verbosity if not running in a terminal
+		if not hasattr(sys.stdout, 'isatty') or not sys.stdout.isatty():
+			import audioguide.defaults as defaults
+			defaults.VERBOSITY = 0
 		m = main()
-		m.run()
+		m.execute()
 		return {}
 	
 	# Apply config and run
+	# Ensure headless-friendly verbosity if not in config and not a terminal
+	if 'VERBOSITY' not in config_dict:
+		if not hasattr(sys.stdout, 'isatty') or not sys.stdout.isatty():
+			config_dict = dict(config_dict)  # Don't modify original
+			config_dict['VERBOSITY'] = 0
+	
 	m = main()
 	m.parse_options_dict(config_dict)
-	return m.run()
+	return m.execute()
 
 
 # CLI entry point

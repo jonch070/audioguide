@@ -1,10 +1,16 @@
 # Import userclasses needed for default values
-from audioguide.userclasses import SuperimpositionOptionsEntry as si
-from audioguide.userclasses import TargetOptionsEntry as tsf
-from audioguide.userclasses import CorpusOptionsEntry as csf
-from audioguide.userclasses import SearchPassOptionsEntry as spass
-from audioguide.userclasses import Score as score
-from audioguide.userclasses import Instrument as instr
+# Use _si to avoid conflicts - si is picked up as config option
+from audioguide.userclasses import SuperimpositionOptionsEntry as _SuperimposeClass
+from audioguide.userclasses import TargetOptionsEntry as _TargetClass
+from audioguide.userclasses import CorpusOptionsEntry as _CorpusClass
+from audioguide.userclasses import SearchPassOptionsEntry as _SearchClass
+from audioguide.userclasses import Score as _ScoreClass
+from audioguide.userclasses import Instrument as _InstrClass
+
+# Create default instances
+SUPERIMPOSE = _SuperimposeClass()
+# NOTE: Class references removed from defaults to avoid being picked up as config options
+# Use: from audioguide.userclasses import TargetOptionsEntry, CorpusOptionsEntry, etc.
 
 ##############  OUTPUT FILES  #############
 OUTPUT_FILE_PREFIX = '' # a string
@@ -46,7 +52,7 @@ NORMALIZATION_DELTA_FREEDOM = 0 # 0=default stddev
 CLUSTER_MAPPING = {}
 
 #######  CONCATENATE SELECTION  #######
-SUPERIMPOSE = si()
+SUPERIMPOSE = _SuperimposeClass()
 ALWAYS_MAKE_COMPLETE_MATCHING_RESULTS = False
 OUTPUT_GAIN_DB = 0.
 RANDOM_SEED = None

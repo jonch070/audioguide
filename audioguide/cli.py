@@ -121,6 +121,13 @@ def main(args=None):
         config.update(file_config)
     
     # Step 3: Apply command-line overrides
+    # Set headless-friendly verbosity if not explicitly configured
+    if 'VERBOSITY' not in config:
+        # Check if we're running non-interactively
+        if not hasattr(sys.stdout, 'isatty') or not sys.stdout.isatty():
+            config['VERBOSITY'] = 0  # Headless mode - no progress bars
+        # Otherwise use default (from defaults.py)
+    
     if opts.target:
         if opts.verbose:
             print(f"Setting target: {opts.target}")

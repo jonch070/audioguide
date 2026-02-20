@@ -192,7 +192,7 @@ class target: # the target
 		self.filename = os.path.abspath(self.filename)
 		self.startSec = userOptsTargetObject.start
 		self.endSec = userOptsTargetObject.end
-			
+
 		# check for signal decomposition
 		self.decompose = userOptsTargetObject.decompose
 		if self.decompose != {}:
@@ -234,7 +234,10 @@ class target: # the target
 		self.envDb = userOptsTargetObject.scaleDb
 		self.midiPitchMethod = userOptsTargetObject.midiPitchMethod
 		self.stretch = userOptsTargetObject.stretch
-		self.segmentationFilepath = userOptsTargetObject.segmentationFilepath		
+		self.segmentationFilepath = userOptsTargetObject.segmentationFilepath
+		# FluCoMa segmentation options
+		self.segmentationMethod = getattr(userOptsTargetObject, 'segmentationMethod', None)
+		self.segmentationParams = getattr(userOptsTargetObject, 'segmentationParams', {})
 		# multirise corpus segmentation ?
 		self.multiriseBool = userOptsTargetObject.multiriseBool
 		self.multirisePercentDev = userOptsTargetObject.multirisePercentDev
@@ -279,7 +282,56 @@ class target: # the target
 			self.powerOffsetValue = self.minPower*util.dbToAmp(self.segmentationOffsetThreshAdd)
 			p.log("TARGET SEGMENTATION: the amplitude of %s never got below the offset threshold of %sdB specified in offsetThreshAbs.  So, I'm using offsetThreshAdd dB (%.2f) above the minimum found power -- a value of %.2f dB."%(self.filename, self.segmentationOffsetThreshAdd, self.segmentationOffsetThreshAdd, util.ampToDb(self.powerOffsetValue)))
 	
-		if self.segmentationFilepath == None:
+		# Check if FluCoMa segmentation is requested
+		if self.segmentationMethod is not None and self.segmentationMethod.startswith('flucoma_'):
+			# Use FluCoMa segmentation
+			p.log("TARGET SEGMENTATION: using FluCoMa method '%s'" % self.segmentationMethod)
+			try:
+				from audioguide import flucoma_segmentation
+
+				# Map method name to function
+				method_name = self.segmentationMethod.replace('flucoma_', '')
+				if method_name == 'noveltyslice':
+					seg_func = flucoma_segmentation.noveltyslice
+				elif method_name == 'ampslice':
+					seg_func = flucoma_segmentation.ampslice
+				elif method_name == 'onsetslice':
+					seg_func = flucoma_segmentation.onsetslice
+				elif method_name == 'transientslice':
+					seg_func = flucoma_segmentation.transientslice
+				else:
+					raise ValueError(f"Unknown FluCoMa segmentation method: {method_name}")
+
+				# Run FluCoMa segmentation
+				params = self.segmentationParams.copy()
+				seg_file = seg_func(self.filename, **params)
+
+				# Read segments from the generated file
+				p.log("TARGET SEGMENTATION: FluCoMa generated segmentation file %s" % seg_file)
+				for dataentry in util.readAudacityLabelFile(seg_file):
+					startf = AnalInterface.s2f(dataentry[0], self.filename)
+					endf = AnalInterface.s2f(dataentry[1], self.filename)
+					# Apply min/max segment length constraints
+					seg_len_frames = endf - startf
+					if seg_len_frames < self.segmentationMinLenFrames:
+						continue  # Skip too-short segments
+					if seg_len_frames > self.segmentationMaxLenFrames:
+						endf = startf + self.segmentationMaxLenFrames  # Truncate too-long segments
+					self.segmentationInOnsetFrames.append((startf, endf))
+					self.extraSegmentationData.append('flucoma_%s' % method_name)
+
+				closebartxt = "FluCoMa %s found %i segments" % (method_name, len(self.segmentationInOnsetFrames))
+
+			except ImportError as e:
+				p.log("WARNING: FluCoMa segmentation module not available: %s" % e)
+				p.log("Falling back to built-in segmentation")
+				self.segmentationMethod = None  # Fall through to default
+			except RuntimeError as e:
+				p.log("WARNING: FluCoMa segmentation failed: %s" % e)
+				p.log("Falling back to built-in segmentation")
+				self.segmentationMethod = None  # Fall through to default
+
+		if self.segmentationMethod is None and self.segmentationFilepath is None:
 			import descriptordata
 			odf = descriptordata.odf(power, 7)
 			# do multirise segmentation?
@@ -289,7 +341,7 @@ class target: # the target
 			else:
 				# just use one rise ration
 				riseRatioList = [self.segmentationOffsetRise]
-				
+
 			for userRiseRatio in riseRatioList: # this a list of rises if desired!
 				segments, logic = segmentationAlgoV2(self.segmentationThresh, self.powerOffsetValue, userRiseRatio, power, odf, self.segmentationMinLenFrames, self.segmentationMaxLenFrames, AnalInterface)
 				# ensure that each segment isn't in the list already
@@ -303,7 +355,7 @@ class target: # the target
 
 
 			closebartxt = "Found %i segments (threshold=%.1f offsetrise=%.2f offsetthreshadd=%.2f)."%(len(self.segmentationInOnsetFrames), self.segmentationThresh, self.segmentationOffsetRise, self.segmentationOffsetThreshAdd)
-		else: # load target segments from a file
+		elif self.segmentationFilepath is not None: # load target segments from a file
 			p.log("TARGET SEGMENTATION: reading segments from file %s"%(self.segmentationFilepath))
 			for dataentry in util.readAudacityLabelFile(self.segmentationFilepath):
 				startf = AnalInterface.s2f(dataentry[0], self.filename)
@@ -344,10 +396,13 @@ class target: # the target
 			self.segs.append(segment)
 
 
-		if self.segmentationFilepath == None:
-			closebartxt = "Found %i segments (threshold=%.1f offsetrise=%.2f offsetthreshadd=%.2f)."%(len(self.segmentationInOnsetFrames), self.segmentationThresh, self.segmentationOffsetRise, self.segmentationOffsetThreshAdd)
+		if self.segmentationMethod is not None and self.segmentationMethod.startswith('flucoma_'):
+			method_name = self.segmentationMethod.replace('flucoma_', '')
+			closebartxt = "FluCoMa %s found %i segments." % (method_name, len(self.segmentationInOnsetFrames))
+		elif self.segmentationFilepath is not None:
+			closebartxt = "Read %i segments from file %s" % (len(self.segmentationInFrames), os.path.split(self.segmentationFilepath)[1])
 		else:
-			closebartxt = "Read %i segments from file %s"%(len(self.segmentationInFrames), os.path.split(self.segmentationFilepath)[1])
+			closebartxt = "Found %i segments (threshold=%.1f offsetrise=%.2f offsetthreshadd=%.2f)." % (len(self.segmentationInOnsetFrames), self.segmentationThresh, self.segmentationOffsetRise, self.segmentationOffsetThreshAdd)
 
 		p.percentageBarClose(txt=closebartxt)
 		################################################

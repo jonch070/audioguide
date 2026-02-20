@@ -1,4 +1,25 @@
-AudioGuide is a program for concatenative synthesis developed by Ben Hackbarth, Norbert Schnell, Philippe Esling, and Diemo Schwarz.  It is written in python, however, one does not need to code in python to use AudioGuide - the user supplies simple options files that are written in python's syntax to interact with the program.
+AudioGuide is a program for concatenative synthesis developed by Ben Hackbarth, Norbert Schnell, Philippe Esling, and Diemo Schwarz. It is written in python, however, one does not need to code in python to use AudioGuide - the user supplies simple options files that are written in python's syntax to interact with the program.
+
+## 🆕 Web GUI (Beta)
+
+A modern web-based interface is now available! No Python coding required.
+
+**Quick Start:**
+```bash
+cd gui
+pip install flask werkzeug
+python app.py
+# Open http://localhost:5000
+```
+
+**Features:**
+- 🎛️ Intuitive parameter controls
+- 📁 Drag-and-drop file management  
+- 🎼 Pre-configured templates (single note, melody, chord)
+- 📊 Real-time processing feedback
+- 💾 Project save/load functionality
+
+See `gui/README.md` for detailed documentation.
 
 * AudioGuide can create a variety of different output file formats:
    * a csound score (which is rendered by default at the end of the concatenative process)
@@ -17,4 +38,35 @@ AudioGuide differs from other programs for concatenative synthesis in several no
 
 * Similarity between target and corpus sounds can be evaluated using time-varying descriptors, thus giving a better sense of the temporal morphology of sounds.  Watch [this](https://www.youtube.com/watch?v=UYElwMFF6Ug&t=217s).
 
-* AudioGuide has a robust and flexible system for defining how corpus samples are matched to target segments. One may find the best match according to list of descriptors, but one may also define multiple search "passes", effectively creating a hierarchical search routine.  One may also create boolean tests within the search function to further nuance the search process.  See [here](https://www.youtube.com/watch?v=UYElwMFF6Ug&t=1535s).
+* AudioGuide has a robust and flexible system for defining how corpus samples are matched to target segments. One may find the best match according to list of descriptors, but one may also define multiple search "passes", effectively creating a hierarchical search routine. One may also create boolean tests within the search function to further nuance the search process. See [here](https://www.youtube.com/watch?v=UYElwMFF6Ug&t=1535s).
+
+## 🚀 Spectral Reconstruction
+
+AudioGuide now supports **spectral reconstruction synthesis** - a mode where target sounds are analyzed for their spectral content and reconstructed by layering corpus sounds matched to individual spectral peaks.
+
+**Key Features:**
+- Direct FFT peak detection (no pitch estimation required)
+- Whole-file analysis for sustained notes and chords
+- Track-level volume automation (VOLENV)
+- Polyphonic chord reconstruction support
+
+**Documentation:**
+- `CONTEXT.md` - Complete spectral reconstruction guide
+- `ROADMAP.md` - Development roadmap and future plans
+- `CHORD_RECONSTRUCTION_NOTES.md` - Polyphonic synthesis details
+
+## 📋 Development Roadmap
+
+See `ROADMAP.md` for the complete development plan including:
+
+**Phase 1** (Next 2-4 weeks):
+- ✅ HTML GUI implementation
+- Project templates and workflows
+- User documentation
+
+**Phase 2** (4-8 weeks):
+- FluCoMa integration for advanced analysis
+- Enhanced segmentation algorithms
+- Improved timbre matching
+
+**Phase 3-5**: Performance optimizations, real-time capabilities, machine learning integration

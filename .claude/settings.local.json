@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(python3:*)",
+      "Bash(python3.13:*)",
+      "Bash(# Check what the cello_baseline.wav actually is soxi /Applications/AudioGuide/test_output/cello_baseline.wav || ffprobe -i /Applications/AudioGuide/test_output/cello_baseline.wav 2>&1)",
+      "Bash(# Look for caterpillar or other melodic test files ls /Applications/AudioGuide/test_output/*.wav)",
+      "Bash(xargs -I {} sh -c 'soxi -D {} 2>/dev/null && echo {}')",
+      "Bash(tee:*)",
+      "Bash(open:*)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}

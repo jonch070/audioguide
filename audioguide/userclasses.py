@@ -31,7 +31,23 @@ def getClassChecksum(classinstance, also=[]):
 
 
 class TargetOptionsEntry(object):
-	def __init__(self, filename, start=None, end=None, thresh=-40, offsetRise=1.5, offsetThreshAdd=+12, offsetThreshAbs=-80, scaleDb=0, minSegLen=0.1, maxSegLen=1000, midiPitchMethod='composite', stretch=1, segmentationFilepath=None, multiriseBool=False, multirisePercentDev=20, multiriseSteps=5, decompose={}, partials=None):
+	def __init__(self, filename, start=None, end=None, thresh=-40, offsetRise=1.5, offsetThreshAdd=+12, offsetThreshAbs=-80, scaleDb=0, minSegLen=0.1, maxSegLen=1000, midiPitchMethod='composite', stretch=1, segmentationFilepath=None, segmentationMethod=None, segmentationParams=None, multiriseBool=False, multirisePercentDev=20, multiriseSteps=5, decompose={}, partials=None):
+		"""
+		Target options for AudioGuide concatenative synthesis.
+
+		Args:
+			segmentationMethod: Segmentation algorithm to use. Options:
+				- None (default): Use built-in power-based segmentation
+				- 'flucoma_noveltyslice': FluCoMa spectral novelty detection (good for melodic material)
+				- 'flucoma_ampslice': FluCoMa amplitude-based onset detection
+				- 'flucoma_onsetslice': FluCoMa onset detection (good for percussive material)
+				- 'flucoma_transientslice': FluCoMa transient detection
+			segmentationParams: Dict of parameters for the segmentation method. Examples:
+				For noveltyslice: {'algorithm': 0, 'threshold': 0.4, 'kernelsize': [3, 5]}
+				For ampslice: {'onThreshold': 10, 'offThreshold': 5}
+				For onsetslice: {'metric': 0, 'threshold': 0.5}
+				Use {'threshold': 'auto'} for automatic threshold detection.
+		"""
 		self.filename = filename
 		self.start = start
 		self.end = end
@@ -45,6 +61,8 @@ class TargetOptionsEntry(object):
 		self.midiPitchMethod = midiPitchMethod
 		self.stretch = stretch
 		self.segmentationFilepath = segmentationFilepath
+		self.segmentationMethod = segmentationMethod
+		self.segmentationParams = segmentationParams if segmentationParams is not None else {}
 		self.multiriseBool = multiriseBool
 		self.multirisePercentDev = multirisePercentDev
 		self.multiriseSteps = multiriseSteps

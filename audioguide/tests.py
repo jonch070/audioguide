@@ -186,6 +186,9 @@ UserVar_types = {
 'ENABLE_TAKEENV': ['True or False'],
 'TAKEENV_STATIC_GAIN': ['a number'],
 'TAKEENV_PER_ITEM_GAIN': ['a number'],
+'TAKEENV_ASR_ATTACK': ['a number'],
+'TAKEENV_ASR_SUSTAIN': ['a number'],
+'TAKEENV_ASR_RELEASE': ['a number'],
 
 
 #################  DESCRIPTOR COMPUTATION SETTINGS  ################
@@ -326,6 +329,9 @@ OptionChangeToProgramRun = {
 "ENABLE_TAKEENV": "output",
 "TAKEENV_STATIC_GAIN": "output",
 "TAKEENV_PER_ITEM_GAIN": "output",
+"TAKEENV_ASR_ATTACK": "output",
+"TAKEENV_ASR_SUSTAIN": "output",
+"TAKEENV_ASR_RELEASE": "output",
 
 "DESCRIPTOR_DATABASE_SIZE_LIMIT": "concate",
 "DESCRIPTOR_DATABASE_AGE_LIMIT": "concate",

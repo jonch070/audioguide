@@ -85,6 +85,10 @@ RPP_AUTOLAUNCH = False
 ENABLE_TAKEENV = False  # Enable clip gain automation (TAKEENV)
 TAKEENV_STATIC_GAIN = 0.0  # Static gain offset in dB (per layer)
 TAKEENV_PER_ITEM_GAIN = 0.0  # Per-item gain offset in dB (alternative to static gain)
+# ASR envelope settings for TAKEENV (attack-sustain-release)
+TAKEENV_ASR_ATTACK = 0.0  # Attack time in seconds (0 = instant)
+TAKEENV_ASR_SUSTAIN = 1.0  # Sustain level as ratio 0-1 (1 = full gain)
+TAKEENV_ASR_RELEASE = 0.0  # Release time in seconds (0 = instant)
 
 ################  DESCRIPTOR COMPUTATION SETTINGS  ################
 DESCRIPTOR_DATABASE_SIZE_LIMIT = 1

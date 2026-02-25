@@ -87,6 +87,20 @@ class main:
 			util.error("CONFIG", "Frame by frame concatenation is only possible with the agConcatenateFrames.py script.")
 		self.p = userinterface.printer(self.ops.VERBOSITY, os.path.dirname(__file__), self.ops.get_outputfile('HTML_LOG_FILEPATH'))
 		if printversion: self.p.printProgramInfo(__version__)
+		
+		# Warn about config flags that aren't wired yet
+		_wired = []
+		if getattr(self.ops, 'CACHE_DESCRIPTORS', False):
+			self.p.log("NOTE: CACHE_DESCRIPTORS=True uses file-based caching (.npy files in data/ directory). The cache.py module is not yet integrated.")
+		if getattr(self.ops, 'PARALLEL_DESCRIPTORS', False):
+			self.p.log("NOTE: PARALLEL_DESCRIPTORS=True is not yet wired. Parallel processing is not active.")
+		if getattr(self.ops, 'ML_ENABLE', False):
+			self.p.log("NOTE: ML_ENABLE=True is not yet wired. ML timbre matching is not active.")
+		if getattr(self.ops, 'BATCH_ENABLE', False):
+			self.p.log("NOTE: BATCH_ENABLE=True is not yet wired. Batch processing is not active.")
+		if getattr(self.ops, 'REALTIME_ENABLE', False):
+			self.p.log("NOTE: REALTIME_ENABLE=True is not yet wired. Realtime processing is not active.")
+		
 		self.AnalInterface = self.ops.createAnalInterface(self.p)
 
 
